@@ -1,0 +1,65 @@
+// UML-диаграмма вариантов использования PortaGraph
+digraph UseCases {
+  graph [rankdir=LR, fontname="DejaVu Sans", fontsize=13, nodesep=0.22, ranksep=0.9, pad=0.3, newrank=true, splines=true];
+  node  [fontname="DejaVu Sans", fontsize=11];
+  edge  [fontname="DejaVu Sans", fontsize=9, dir=none, color="#333333"];
+
+  // ---------- основные актёры (слева)
+  guest     [shape=none, image="actor.png", label="Гость", labelloc=b, height=1.45, width=0.9];
+  dev       [shape=none, image="actor.png", label="Разработчик", labelloc=b, height=1.45, width=0.9];
+  arch      [shape=none, image="actor.png", label="Архитектор /\nтехлид", labelloc=b, height=1.55, width=0.9];
+  owner     [shape=none, image="actor.png", label="Владелец\nпроекта", labelloc=b, height=1.55, width=0.9];
+
+  // ---------- внешние системы (справа)
+  git       [shape=none, image="actor.png", label="«system»\nGit-хостинг\n(GitHub, Bitbucket)", labelloc=b, height=1.7, width=1.2];
+  llm       [shape=none, image="actor.png", label="«system»\nLLM-провайдер", labelloc=b, height=1.6, width=1.2];
+
+  subgraph cluster_system {
+    label="PortaGraph"; labeljust=l; fontsize=14; style="rounded"; color="#333333"; penwidth=1.3; margin=14;
+    node [shape=ellipse, style=filled, fillcolor="#eef3fb", color="#2f4ac0", width=2.6, height=0.62];
+
+    uc01 [label="UC-01\nЗарегистрироваться\nи войти"];
+    uc02 [label="UC-02\nСоздать проект"];
+    uc15 [label="UC-15\nУправлять участниками\nпроекта"];
+    uc03 [label="UC-03\nПодключить набор\nрепозиториев"];
+    uc03a[label="UC-03.1\nПроверить доступ\nк репозиторию", width=2.3];
+    uc04 [label="UC-04\nЗапустить анализ\nпроекта"];
+    uc05 [label="UC-05\nПроиндексировать код\nи документацию"];
+    uc06 [label="UC-06\nВыполнить агентный\nанализ архитектуры", fillcolor="#ffe8a3", color="#d9480f", penwidth=2];
+    uc07 [label="UC-07\nПостроить единый граф\nmulti-repo", fillcolor="#ffe8a3", color="#d9480f", penwidth=2];
+    uc08 [label="UC-08\nПросмотреть карту\nсистемы"];
+    uc09 [label="UC-09\nИсследовать граф\nзависимостей кода"];
+    uc10 [label="UC-10\nЗадать вопрос\nAI-ассистенту"];
+    uc11 [label="UC-11\nВыполнить\nimpact analysis", fillcolor="#ffe8a3", color="#d9480f", penwidth=2];
+    uc12 [label="UC-12\nСформировать описание\nархитектуры / онбординг", fillcolor="#ffe8a3", color="#d9480f", penwidth=2];
+    uc13 [label="UC-13\nПодтвердить или\nисправить выводы AI"];
+    uc14 [label="UC-14\nСинхронизировать\nпроект по webhook"];
+  }
+
+  // ---------- обобщение актёров (полый треугольник у родителя)
+  arch  -> dev  [dir=forward, arrowhead=onormal, arrowsize=1.2, constraint=false];
+  owner -> arch [dir=forward, arrowhead=onormal, arrowsize=1.2, constraint=false];
+
+  { rank=same; guest; dev; arch; owner; }
+
+  // ---------- ассоциации
+  guest -> uc01;
+  owner -> uc02; owner -> uc03; owner -> uc15;
+  arch  -> uc04; arch -> uc13;
+  dev   -> uc08; dev -> uc09; dev -> uc10; dev -> uc11; dev -> uc12;
+
+  uc03a -> git; uc05 -> git; uc14 -> git;
+  uc06 -> llm; uc10 -> llm; uc12 -> llm;
+
+  // ---------- include / extend (пунктир, открытая стрелка к включаемому / расширяемому)
+  edge [dir=forward, style=dashed, arrowhead=vee, color="#555555"];
+  uc03 -> uc03a [label="«include»"];
+  uc03 -> uc04  [label="«include»"];
+  uc04 -> uc05  [label="«include»"];
+  uc04 -> uc06  [label="«include»"];
+  uc04 -> uc07  [label="«include»"];
+  uc14 -> uc05  [label="«include»"];
+  uc14 -> uc07  [label="«include»"];
+  uc09 -> uc08  [label="«extend»"];
+  uc11 -> uc07  [label="«include»", constraint=false];
+}

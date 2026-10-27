@@ -1,0 +1,57 @@
+digraph NAV {
+  graph [fontname="DejaVu Sans", fontsize=14, pad=0.3, labelloc=t, splines=true, nodesep=0.5, ranksep=0.55];
+  node  [fontname="DejaVu Sans", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#2f4ac0", penwidth=1.3, margin="0.18,0.08"];
+  edge  [fontname="DejaVu Sans", fontsize=9, color="#333333", arrowhead=vee, arrowsize=0.8];
+  init  [shape=circle, style=filled, fillcolor=black, color=black, label="", width=0.25, fixedsize=true];
+  fin [shape=circle, peripheries=2, style=filled, fillcolor=black, color=black, label="", width=0.25, fixedsize=true];
+
+  label="Схема переходов между экранами PortaGraph (UML-диаграмма состояний интерфейса)\n\n";
+  login    [label="Э-01 Вход / регистрация"];
+  projects [label="Э-02 Мои проекты"];
+  create   [label="Э-03 Мастер: новый проект\n(шаг 1 — название)"];
+  repos    [label="Э-04 Мастер: подключение\nрепозиториев (шаг 2)"];
+  progress [label="Э-05 Прогресс анализа"];
+
+  subgraph cluster_ws {
+    label="Рабочее пространство проекта (боковое меню доступно на всех экранах)"; labeljust=l; fontsize=12;
+    style="rounded,dashed"; color="#5f3dc4"; margin=16;
+    map      [label="Э-06 Карта системы", fillcolor="#e5dbff", color="#5f3dc4", penwidth=2];
+    gdep     [label="Э-07 Граф зависимостей кода"];
+    node_p   [label="Э-08 Панель узла\n(описание, связи, доказательства)"];
+    code     [label="Э-09 Просмотр\nисходного кода"];
+    ask      [label="Э-10 AI-ассистент", fillcolor="#ffe8a3", color="#d9480f"];
+    impact   [label="Э-11 Impact analysis", fillcolor="#ffe8a3", color="#d9480f"];
+    docs     [label="Э-12 Документация\nи онбординг", fillcolor="#ffe8a3", color="#d9480f"];
+    settings [label="Э-13 Настройки проекта:\nрепозитории, участники"];
+  }
+
+  init -> login;
+  login -> projects [label=" вход выполнен "];
+  login -> login [label=" неверный пароль /\n сообщение об ошибке "];
+  projects -> create [label=" «Новый проект» "];
+  projects -> map [label=" выбор проекта\n [анализ завершён] "];
+  projects -> progress [label=" выбор проекта\n [анализ идёт] "];
+  create -> repos [label=" «Далее» [название заполнено] "];
+  create -> projects [label=" «Отмена» "];
+  repos -> create [label=" «Назад» "];
+  repos -> repos [label=" ошибка доступа /\n подсветить адрес "];
+  repos -> progress [label=" «Запустить анализ»\n [подключён ≥ 1] "];
+  progress -> map [label=" анализ завершён "];
+  progress -> repos [label=" ошибка анализа /\n «Исправить подключение» "];
+  map -> gdep [label=" «Граф зависимостей» "];
+  gdep -> map [label=" «Карта системы» "];
+  map -> node_p [label=" клик по узлу "];
+  gdep -> node_p [label=" клик по узлу "];
+  node_p -> code [label=" «Открыть код» "];
+  code -> node_p [label=" «Назад» "];
+  node_p -> impact [label=" «Оценить влияние»\n / узел выбран "];
+  map -> ask [label=" меню «AI-ассистент» "];
+  ask -> code [label=" клик по ссылке\n «файл:строки» "];
+  map -> impact [label=" меню «Impact analysis» "];
+  impact -> map [label=" «Показать на карте» /\n подсветка компонентов "];
+  map -> docs [label=" меню «Документация» "];
+  map -> settings [label=" меню «Настройки» "];
+  settings -> progress [label=" «Перезапустить анализ» "];
+  map -> projects [label=" «Все проекты» "];
+  projects -> fin [label=" «Выйти» "];
+}

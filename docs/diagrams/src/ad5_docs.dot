@@ -1,0 +1,44 @@
+digraph AD {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=13, nodesep=0.35, ranksep=0.32, pad=0.3, splines=ortho, labelloc=t, forcelabels=true];
+  node  [fontname="DejaVu Sans", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#2f4ac0", penwidth=1.3, margin="0.14,0.06"];
+  edge  [fontname="DejaVu Sans", fontsize=10, color="#333333", arrowhead=vee, arrowsize=0.8];
+
+  label="AD-5. Формирование и утверждение архитектурного описания (UC-12, UC-13)\n\n"; fontsize=14;
+  s [shape=circle, style=filled, fillcolor=black, label="", width=0.26, fixedsize=true, color=black];
+  a1 [label="Выбрать тип документа: обзор\nархитектуры, онбординг, карточки\nсервисов"];
+  d1 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a2 [label="Предложить запустить анализ\nпроекта"];
+  a3 [label="Собрать сводку графа: репозитории,\nкомпоненты, связи, отметки о\nподтверждении"];
+  a4 [label="Агент формирует черновик документа\nв Markdown", fillcolor="#ffe8a3", color="#d9480f", penwidth=1.8];
+  d2 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a5 [label="Сообщить о недоступности AI-\nсервиса"];
+  a6 [label="Сохранить документ со статусом\n«Черновик»"];
+  a7 [label="Показать документ"];
+  d3 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a8 [label="Архитектор проверяет документ"];
+  d4 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a9 [label="Утвердить документ (статус\n«Утверждён»)"];
+  a10 [label="Исправить выводы на графе (UC-13)"];
+  m1 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  e [shape=circle, peripheries=2, style=filled, fillcolor=black, color=black, label="", width=0.26, fixedsize=true];
+  s -> a1 [];
+  a1 -> d1 [];
+  d1 -> a2 [xlabel=" [анализа нет] "];
+  d1 -> a3 [xlabel=" [есть завершённый анализ] "];
+  a3 -> a4 [];
+  a4 -> d2 [];
+  d2 -> a5 [xlabel=" [ошибка] "];
+  d2 -> a6 [xlabel=" [черновик получен] "];
+  a6 -> a7 [];
+  a7 -> d3 [];
+  d3 -> m1 [xlabel=" [пользователь — разработчик] "];
+  d3 -> a8 [xlabel=" [пользователь — архитектор] "];
+  a8 -> d4 [];
+  d4 -> a9 [xlabel=" [документ корректен] "];
+  d4 -> a10 [xlabel=" [есть ошибки] "];
+  a10 -> a3 [xlabel=" [сформировать заново] ", constraint=false];
+  a2 -> m1 [];
+  a5 -> m1 [];
+  a9 -> m1 [];
+  m1 -> e [];
+}

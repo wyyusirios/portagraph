@@ -1,0 +1,33 @@
+digraph RUN {
+  graph [fontname="DejaVu Sans", fontsize=14, pad=0.3, labelloc=t, splines=true, nodesep=0.5, ranksep=0.55];
+  node  [fontname="DejaVu Sans", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#2f4ac0", penwidth=1.3, margin="0.18,0.08"];
+  edge  [fontname="DejaVu Sans", fontsize=9, color="#333333", arrowhead=vee, arrowsize=0.8];
+  init  [shape=circle, style=filled, fillcolor=black, color=black, label="", width=0.25, fixedsize=true];
+  fin [shape=circle, peripheries=2, style=filled, fillcolor=black, color=black, label="", width=0.25, fixedsize=true];
+
+  label="Диаграмма состояний объекта AnalysisRun (задача анализа проекта)\n\n"; rankdir=LR; compound=true;
+  QUEUED   [label="QUEUED\nВ очереди"];
+  subgraph cluster_active {
+    label="Выполнение (составное состояние)"; labeljust=l; fontsize=11; style="rounded"; color="#2f4ac0"; margin=14;
+    FETCHING [label="FETCHING\nЗагрузка коммитов\n—\nentry / startedAt := now"];
+    INDEXING [label="INDEXING\nИндексация\n—\ndo / индексировать файлы"];
+    ANALYZING [label="ANALYZING\nАгентный анализ\n—\ndo / описать репозитории", fillcolor="#ffe8a3", color="#d9480f"];
+    BUILDING [label="BUILDING_GRAPH\nПостроение графа\n—\ndo / связать репозитории", fillcolor="#ffe8a3", color="#d9480f"];
+  }
+  COMPLETED [label="COMPLETED\nЗавершён\n—\nentry / progress := 100;\nпометить документы OUTDATED", fillcolor="#d3f9d8", color="#2b8a3e"];
+  FAILED   [label="FAILED\nОшибка\n—\nentry / сохранить errorMessage", fillcolor="#ffe3e3", color="#c92a2a"];
+  CANCELLED [label="CANCELLED\nОтменён", fillcolor="#f1f3f5", color="#495057"];
+
+  init -> QUEUED [label=" enqueue()\n [нет активного анализа] "];
+  QUEUED -> FETCHING [label=" транзакция\n зафиксирована "];
+  FETCHING -> INDEXING [label=" коммиты\n получены "];
+  INDEXING -> ANALYZING [label=" файлы\n проиндексированы "];
+  ANALYZING -> BUILDING [label=" роли и модули\n определены "];
+  BUILDING -> COMPLETED [label=" связи\n сохранены "];
+  INDEXING -> FAILED [ltail=cluster_active, label=" ошибка хостинга, агента или БД "];
+  INDEXING -> CANCELLED [ltail=cluster_active, label=" отмена [не BUILDING_GRAPH] "];
+  QUEUED -> CANCELLED [label=" отмена "];
+  FAILED -> QUEUED [label=" «Повторить анализ» ", constraint=false];
+  COMPLETED -> fin; CANCELLED -> fin;
+  { rank=same; COMPLETED; FAILED; CANCELLED; }
+}

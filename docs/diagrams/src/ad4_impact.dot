@@ -1,0 +1,45 @@
+digraph AD {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=13, nodesep=0.35, ranksep=0.32, pad=0.3, splines=ortho, labelloc=t, forcelabels=true];
+  node  [fontname="DejaVu Sans", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#2f4ac0", penwidth=1.3, margin="0.14,0.06"];
+  edge  [fontname="DejaVu Sans", fontsize=10, color="#333333", arrowhead=vee, arrowsize=0.8];
+
+  label="AD-4. Impact analysis предполагаемого изменения (UC-11)\n\n"; fontsize=14;
+  s [shape=circle, style=filled, fillcolor=black, label="", width=0.26, fixedsize=true, color=black];
+  a1 [label="Выбрать изменяемые компоненты на\nграфе"];
+  a2 [label="Описать изменение и задать глубину\nанализа (1–6)"];
+  a3 [label="Загрузить граф последнего\nзавершённого анализа"];
+  a4 [label="Поместить выбранные узлы в очередь\nобхода (вес = 1)"];
+  m1 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  d1 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a5 [label="Извлечь узел из очереди"];
+  d2 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a6 [label="Для каждого потребителя узла\nрассчитать вес влияния: вес × 0,6\n× уверенность связи", fillcolor="#ffe8a3", color="#d9480f", penwidth=1.8];
+  d3 [shape=diamond, style=filled, fillcolor="#ffffff", color="#333333", label="", width=0.36, height=0.36, fixedsize=true];
+  a7 [label="Запомнить путь и вес, добавить\nпотребителя в очередь"];
+  a8 [label="Отсортировать затронутые\nкомпоненты по весу"];
+  a9 [label="Оценить риск: LOW / MEDIUM / HIGH\n/ CRITICAL"];
+  a10 [label="Запросить у агента рекомендации:\nчто проверить, кого предупредить"];
+  a11 [label="Сохранить отчёт impact analysis"];
+  a12 [label="Показать отчёт и подсветить\nзатронутые компоненты на графе"];
+  e [shape=circle, peripheries=2, style=filled, fillcolor=black, color=black, label="", width=0.26, fixedsize=true];
+  s -> a1 [];
+  a1 -> a2 [];
+  a2 -> a3 [];
+  a3 -> a4 [];
+  a4 -> m1 [];
+  m1 -> d1 [];
+  d1 -> a5 [xlabel=" [очередь не пуста] "];
+  a5 -> d2 [];
+  d2 -> m1 [xlabel=" [достигнута глубина] ", constraint=false];
+  d2 -> a6 [xlabel=" [глубина не достигнута] "];
+  a6 -> d3 [];
+  d3 -> a7 [xlabel=" [вес больше найденного ранее] "];
+  d3 -> m1 [xlabel=" [иначе] ", constraint=false];
+  a7 -> m1 [constraint=false];
+  d1 -> a8 [xlabel=" [очередь пуста] "];
+  a8 -> a9 [];
+  a9 -> a10 [];
+  a10 -> a11 [];
+  a11 -> a12 [];
+  a12 -> e [];
+}
