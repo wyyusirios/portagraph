@@ -1,6 +1,6 @@
 """Поиск связей между репозиториями по коду и конфигурации.
 
-Каждая найденная связь — кандидат с уверенностью и доказательством (файл, строка,
+Каждая найденная связь – кандидат с уверенностью и доказательством (файл, строка,
 фрагмент). Несколько независимых доказательств одной связи объединяются:
 
     уверенность = 1 − Π(1 − cᵢ), но не выше 0,98
@@ -287,7 +287,7 @@ class LinkExtractor:
         out = []
         try:
             doc = (yaml.safe_load(text) if yaml else mini_yaml(text)) or {}
-        except Exception:  # noqa: BLE001 — битый YAML просто пропускаем
+        except Exception:  # noqa: BLE001 – битый YAML просто пропускаем
             return out
         if not isinstance(doc, dict):
             return out
@@ -419,7 +419,7 @@ def _scalar(v: str):
 
 
 def mini_yaml(text: str):
-    """Упрощённый разбор YAML (блочные словари и списки) — запасной вариант без PyYAML,
+    """Упрощённый разбор YAML (блочные словари и списки) – запасной вариант без PyYAML,
     достаточный для docker-compose."""
     lines = []
     for raw in text.splitlines():

@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico, risk_pill, conf, empty %}
-{% block title %}Impact analysis — {{ p.name }}{% endblock %}
+{% block title %}Impact analysis – {{ p.name }}{% endblock %}
 {% block page %}impact{% endblock %}
 {% block crumb %}Impact analysis{% endblock %}
 {% block content %}
-{% if not run %}{% call empty("zap", "Граф ещё не построен", "Impact analysis работает по графу зависимостей — сначала запустите анализ.") %}<a class="btn primary" href="{{ url_for('pages.repositories', pid=p.id) }}">К репозиториям</a>{% endcall %}
+{% if not run %}{% call empty("zap", "Граф ещё не построен", "Impact analysis работает по графу зависимостей – сначала запустите анализ.") %}<a class="btn primary" href="{{ url_for('pages.repositories', pid=p.id) }}">К репозиториям</a>{% endcall %}
 {% else %}
 <div class="page-head"><div class="title"><h1>Impact analysis</h1><p>Что затронет изменение: обход графа от изменяемых компонентов к их потребителям с затуханием веса.</p></div></div>
 <div class="grid main-side">
@@ -17,7 +17,7 @@
         <div class="chosen" id="chosen" data-pre='{{ pre_node|tojson|forceescape if pre_node else "null" }}'></div></div>
       <div class="field"><label for="impact-desc">Описание изменения</label><input id="impact-desc" type="text" maxlength="2000" required placeholder="Например: меняем формат ответа /api/auth/validate"></div>
       <div class="field"><label for="depth">Глубина обхода: <b id="depth-val">3</b></label><input type="range" id="depth" min="1" max="6" value="3">
-        <span class="hint">1 — только прямые потребители, 6 — вся цепочка. Вес на каждом шаге: × 0,6 × уверенность связи.</span></div>
+        <span class="hint">1 – только прямые потребители, 6 – вся цепочка. Вес на каждом шаге: × 0,6 × уверенность связи.</span></div>
       <div class="row"><button class="btn primary" type="submit">{{ ico("zap") }}Рассчитать влияние</button><span class="muted small" id="impact-status"></span></div>
     </form>
     {% else %}<div class="notice info">{{ ico("info") }}<div>Роль «{{ ROLE_RU[p.role] }}» позволяет только просматривать отчёты.</div></div>{% endif %}
@@ -26,7 +26,7 @@
     <div class="card stack" id="report">
       <div class="row top"><div class="grow"><div class="faint small">Отчёт №{{ r.id }} · {{ r.author }} · {{ r.created_at|dt }}</div><h2 style="font-size:18px;margin-top:4px">{{ r.change_description }}</h2>
         <div class="row wrap" style="margin-top:8px">{% for c in r.changed_nodes %}<span class="pill sm accent">{{ c.name }}</span>{% endfor %}<span class="faint small">глубина {{ r.max_depth }}</span></div></div></div>
-      {% if r.stale %}<div class="notice">{{ ico("alert") }}<div>Граф обновился после формирования отчёта — пересчитайте влияние для актуальных данных.</div></div>{% endif %}
+      {% if r.stale %}<div class="notice">{{ ico("alert") }}<div>Граф обновился после формирования отчёта – пересчитайте влияние для актуальных данных.</div></div>{% endif %}
       <div class="risk {{ r.risk_level }}"><div><div class="faint small">Уровень риска</div><div class="lvl">{{ r.risk_ru }}</div></div>
         <div class="grow"></div><div><div class="faint small">Затронуто компонентов</div><div class="lvl" style="color:var(--text)">{{ r.components|length }}</div></div>
         <div><div class="faint small">Суммарный вес</div><div class="lvl" style="color:var(--text)">{{ "%.2f"|format(r.total_weight) }}</div></div></div>

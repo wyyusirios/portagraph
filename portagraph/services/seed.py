@@ -42,6 +42,6 @@ def run(ctx: Context, pipeline) -> bool:
             impact_service.run(ctx, p["id"], owner, [auth_node["id"]], 3,
                                "Меняем формат ответа /api/auth/validate: роли передаются списком")
         assistant.ask(ctx, p["id"], ids["maxim@portagraph.local"], None, "Кто использует auth-service?")
-    except Exception:  # noqa: BLE001 — демо-данные не должны мешать запуску
+    except Exception:  # noqa: BLE001 – демо-данные не должны мешать запуску
         log.exception("Не удалось подготовить часть демонстрационных данных")
     return True

@@ -34,7 +34,7 @@ def render_markdown(text: str) -> str:
             except (KeyError, ValueError):  # в другой версии Markdown имя может отличаться
                 pass
         out = m.convert(text)
-    except Exception:  # noqa: BLE001 — документ всё равно должен открыться
+    except Exception:  # noqa: BLE001 – документ всё равно должен открыться
         return "<pre>" + _html.escape(text) + "</pre>"
     return re.sub(r'(href|src)="\s*(javascript|data|vbscript):[^"]*"', r'\1="#"', out, flags=re.I)
 
@@ -61,7 +61,7 @@ def _conf(c: float, verified: bool) -> str:
 
 def _ev(e: dict) -> str:
     ev = e["evidence"][0] if e["evidence"] else None
-    return f"`{ev['repo']}/{ev['path']}:{ev.get('line') or 1}`" if ev else "—"
+    return f"`{ev['repo']}/{ev['path']}:{ev.get('line') or 1}`" if ev else "–"
 
 
 def _header(m: dict, title: str) -> list[str]:
@@ -78,7 +78,7 @@ def _services(m: dict) -> list[dict]:
 
 def overview(m: dict) -> tuple[str, str]:
     p = m["project"]
-    title = f"Обзор архитектуры — {p['name']}"
+    title = f"Обзор архитектуры – {p['name']}"
     out = _header(m, title)
     services = _services(m)
     stores = [n for n in m["nodes"] if n["type"] == "DATABASE"]
@@ -92,7 +92,7 @@ def overview(m: dict) -> tuple[str, str]:
     out += ["## 2. Репозитории", "", "| Репозиторий | Роль | Назначение | Файлов |", "|---|---|---|---|"]
     for r in m["repos"]:
         out.append(f"| {r['name']} | {ROLE_RU.get(r['detected_role'], r['detected_role'])} ({r['role_confidence']:.2f}) | "
-                   f"{(r['purpose_summary'] or '—').replace('|', '/')} | {r['files']} |")
+                   f"{(r['purpose_summary'] or '–').replace('|', '/')} | {r['files']} |")
     out += ["", "## 3. Сервисы", ""]
     for s in services:
         meta = s["metadata"] or {}
@@ -115,13 +115,13 @@ def overview(m: dict) -> tuple[str, str]:
         for t in topics:
             pubs = [e["sname"] for e in m["edges"] if e["tid"] == t["id"] and e["type"] == "PUBLISHES"]
             subs = [e["sname"] for e in m["edges"] if e["tid"] == t["id"] and e["type"] == "CONSUMES"]
-            out.append(f"- **{t['name']}**: публикует {', '.join(pubs) or '—'}; читает {', '.join(subs) or '—'}.")
+            out.append(f"- **{t['name']}**: публикует {', '.join(pubs) or '–'}; читает {', '.join(subs) or '–'}.")
     if stores or ext:
         out += ["", "## 6. Данные и внешние системы", ""]
         for n in stores + ext:
             users = sorted({e["sname"] for e in m["edges"] if e["tid"] == n["id"]})
             kind = "База данных" if n["type"] == "DATABASE" else "Внешняя система"
-            out.append(f"- **{n['name']}** ({kind.lower()}) — используют: {', '.join(users) or '—'}.")
+            out.append(f"- **{n['name']}** ({kind.lower()}) – используют: {', '.join(users) or '–'}.")
     weak = [e for e in m["edges"] if e["confidence"] < 0.7 and not e["verified"]]
     out += ["", "## 7. Открытые вопросы", ""]
     if weak:
@@ -144,7 +144,7 @@ def onboarding(m: dict) -> tuple[str, str]:
     libs = [r for r in m["repos"] if r["detected_role"] == "LIBRARY"]
     infra = [r for r in m["repos"] if r["detected_role"] == "INFRASTRUCTURE"]
     out += ["## С чего начать", "",
-            f"1. Прочитайте «Обзор архитектуры» и откройте карту системы в PortaGraph — на ней {len(services)} сервисов и их связи.",
+            f"1. Прочитайте «Обзор архитектуры» и откройте карту системы в PortaGraph – на ней {len(services)} сервисов и их связи.",
             "2. Пройдите путь запроса пользователя: " + " → ".join(
                 [r["name"] for r in front[:1]] + ([gateway["name"]] if gateway else []) + ["нужный сервис"]) + ".",
             "3. Задайте вопросы ассистенту: «Кто использует auth-service?», «Где хранится заказ?», «Что делает billing?»." if any(
@@ -152,13 +152,13 @@ def onboarding(m: dict) -> tuple[str, str]:
             "4. Перед изменением общего кода запустите impact analysis.", ""]
     out += ["## Карта репозиториев", ""]
     for r in m["repos"]:
-        out.append(f"- **{r['name']}** — {ROLE_RU.get(r['detected_role'], '')}. {r['purpose_summary'] or ''}")
+        out.append(f"- **{r['name']}** – {ROLE_RU.get(r['detected_role'], '')}. {r['purpose_summary'] or ''}")
     if libs:
         out += ["", "## Общие библиотеки", "",
-                "Изменения в них затрагивают сразу несколько сервисов — согласуйте их с владельцами потребителей:", ""]
+                "Изменения в них затрагивают сразу несколько сервисов – согласуйте их с владельцами потребителей:", ""]
         for r in libs:
             used = sorted({e["sname"] for e in m["edges"] if e["tname"] == r["name"]})
-            out.append(f"- **{r['name']}**" + (f" — используют {', '.join(used)}" if used else ""))
+            out.append(f"- **{r['name']}**" + (f" – используют {', '.join(used)}" if used else ""))
     if infra:
         out += ["", "## Как запустить локально", ""]
         for r in infra:
@@ -168,9 +168,9 @@ def onboarding(m: dict) -> tuple[str, str]:
     for e in m["edges"]:
         deg[e["tname"]] = deg.get(e["tname"], 0) + 1
     for s in sorted(services, key=lambda s: -deg.get(s["name"], 0))[:6]:
-        out.append(f"- **{s['name']}** (входящих связей: {deg.get(s['name'], 0)}) — {s['description'] or ''}")
+        out.append(f"- **{s['name']}** (входящих связей: {deg.get(s['name'], 0)}) – {s['description'] or ''}")
     out += ["", "## Договорённости", "", "- Секреты не хранятся в репозиториях: PortaGraph маскирует найденные значения при индексации.",
-            "- Связь, которую PortaGraph показывает пунктиром, выведена по косвенным признакам — уточните её у владельца сервиса.", ""]
+            "- Связь, которую PortaGraph показывает пунктиром, выведена по косвенным признакам – уточните её у владельца сервиса.", ""]
     return title, "\n".join(out)
 
 
@@ -182,12 +182,12 @@ def service_card(m: dict, node_id: int) -> tuple[str, str]:
     title = f"Карточка сервиса {s['name']}"
     out = _header(m, title)
     repo = next((r for r in m["repos"] if r["id"] == s["repository_id"]), None)
-    out += ["## Назначение", "", s["description"] or "—", "",
+    out += ["## Назначение", "", s["description"] or "–", "",
             "## Паспорт", "", "| Параметр | Значение |", "|---|---|",
-            f"| Репозиторий | {s['repo_name'] or '—'} |",
-            f"| Источник | {repo['url'] if repo else '—'} |",
-            f"| Стек | {', '.join(meta.get('stack') or []) or '—'} |",
-            f"| Уверенность роли | {repo['role_confidence']:.2f} |" if repo else "| Уверенность роли | — |", ""]
+            f"| Репозиторий | {s['repo_name'] or '–'} |",
+            f"| Источник | {repo['url'] if repo else '–'} |",
+            f"| Стек | {', '.join(meta.get('stack') or []) or '–'} |",
+            f"| Уверенность роли | {repo['role_confidence']:.2f} |" if repo else "| Уверенность роли | – |", ""]
     eps = meta.get("endpoints") or []
     if eps:
         out += ["## API", "", "| Метод | Путь | Где |", "|---|---|---|"]
@@ -197,11 +197,11 @@ def service_card(m: dict, node_id: int) -> tuple[str, str]:
     outs = [e for e in m["edges"] if e["sid"] == s["id"]]
     ins = [e for e in m["edges"] if e["tid"] == s["id"]]
     out += ["## Зависимости (от чего зависит)", ""]
-    out += [f"- {EDGE_RU.get(e['type'], e['type'])} **{e['tname']}** — {_conf(e['confidence'], e['verified'])}, {_ev(e)}" for e in outs] or ["- нет"]
+    out += [f"- {EDGE_RU.get(e['type'], e['type'])} **{e['tname']}** – {_conf(e['confidence'], e['verified'])}, {_ev(e)}" for e in outs] or ["- нет"]
     out += ["", "## Потребители (кто зависит)", ""]
-    out += [f"- **{e['sname']}** {EDGE_RU.get(e['type'], e['type'])} — {_conf(e['confidence'], e['verified'])}, {_ev(e)}" for e in ins] or ["- нет"]
+    out += [f"- **{e['sname']}** {EDGE_RU.get(e['type'], e['type'])} – {_conf(e['confidence'], e['verified'])}, {_ev(e)}" for e in ins] or ["- нет"]
     out += ["", "## Риски изменений", "",
-            f"Прямых потребителей: {len(ins)}. " + ("Изменение контракта затронет их — согласуйте его заранее." if ins else
+            f"Прямых потребителей: {len(ins)}. " + ("Изменение контракта затронет их – согласуйте его заранее." if ins else
                                                      "Изменение контракта не затронет другие сервисы проекта."), ""]
     return title, "\n".join(out)
 
@@ -250,7 +250,7 @@ def update(ctx: Context, project_id: int, user_id: int, doc_id: int, content_md:
     access.require(ctx, project_id, user_id, "generate_docs")
     d = get(ctx, project_id, user_id, doc_id)
     if d["status"] == "APPROVED":
-        raise BadRequest("Утверждённый документ не редактируется — сформируйте новую версию")
+        raise BadRequest("Утверждённый документ не редактируется – сформируйте новую версию")
     content_md = (content_md or "").strip()
     if not content_md:
         raise BadRequest("Документ не может быть пустым")

@@ -1,4 +1,4 @@
-/* PortaGraph — оформление в стиле Omega: тёмная тёплая палитра, сайдбар с группами,
+/* PortaGraph – оформление в стиле Omega: тёмная тёплая палитра, сайдбар с группами,
    карточки со спарклайнами, тинтованные пилюли, осенний акцент. */
 :root {
   --bg: #1b1b1a;
@@ -303,7 +303,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .results button { display: flex; width: 100%; gap: 8px; align-items: center; text-align: left; background: none; border: 0; color: var(--text);
   font: inherit; padding: 7px 9px; border-radius: 7px; cursor: pointer; }
 .results button:hover, .results button.on { background: var(--hover); }
-.legend { position: absolute; left: 16px; bottom: 16px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px;
+.legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 16px; justify-content: center; width: max-content; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px;
   color: var(--muted); max-width: calc(100% - 140px); z-index: 2; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }

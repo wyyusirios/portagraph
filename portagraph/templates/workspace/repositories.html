@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico, role_pill, repo_status, run_pill, empty, health_badge %}
-{% block title %}Репозитории — {{ p.name }}{% endblock %}
+{% block title %}Репозитории – {{ p.name }}{% endblock %}
 {% block page %}repositories{% endblock %}
 {% block crumb %}Репозитории{% endblock %}
 {% block top_actions %}
@@ -14,7 +14,7 @@
 {% if new %}<div class="steps" style="max-width:760px"><div class="step done"><div class="bar"></div>1. Проект</div><div class="step now"><div class="bar"></div>2. Репозитории</div><div class="step"><div class="bar"></div>3. Анализ</div></div>{% endif %}
 <div class="page-head"><div class="title"><h1>Репозитории</h1><p>Роль каждого репозитория (сервис, библиотека, фронтенд, инфраструктура) PortaGraph определяет сам по структуре и коду.</p></div></div>
 {% if last and last.status not in ("COMPLETED", "FAILED", "CANCELLED") %}
-<a class="notice" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">{{ ico("activity") }}<div class="grow">Идёт анализ: {{ last.stage_message }} — {{ last.progress }}%. Открыть журнал →</div></a>{% endif %}
+<a class="notice" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">{{ ico("activity") }}<div class="grow">Идёт анализ: {{ last.stage_message }} – {{ last.progress }}%. Открыть журнал →</div></a>{% endif %}
 {% if results %}
 <div class="card"><div class="card-head"><h2>Результат подключения</h2></div><div class="list">
 {% for r in results %}<div class="item"><span class="pill sm {{ 'ok' if r.ok else 'err' }}">{{ ico("check" if r.ok else "x") }}</span><code class="grow ellipsis">{{ r.url }}</code><span class="small {{ 'muted' if r.ok else '' }}" style="{{ '' if r.ok else 'color:#f08b7d' }}">{{ r.message }}</span></div>{% endfor %}
@@ -42,7 +42,7 @@
     {% endfor %}
     </tbody></table>
     {% else %}
-    {% call empty("repo", "Пока нет репозиториев", "Добавьте адреса Git-репозиториев, загрузите ZIP-архивы или подключите демо-систему ShopFlow из 9 репозиториев — она работает без интернета.") %}{% endcall %}
+    {% call empty("repo", "Пока нет репозиториев", "Добавьте адреса Git-репозиториев, загрузите ZIP-архивы или подключите демо-систему ShopFlow из 9 репозиториев – она работает без интернета.") %}{% endcall %}
     {% endif %}
   </div>
 
@@ -77,7 +77,7 @@
     </form>{% endif %}
     <form class="tab-panel stack hidden" data-panel="demo" method="post" action="{{ url_for('pages.repo_demo', pid=p.id) }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <p class="muted">ShopFlow — интернет-магазин из 9 репозиториев на Java, Kotlin, Python и TypeScript: шлюз, авторизация, каталог, заказы, биллинг, уведомления, общая библиотека, фронтенд и инфраструктура.</p>
+      <p class="muted">ShopFlow – интернет-магазин из 9 репозиториев на Java, Kotlin, Python и TypeScript: шлюз, авторизация, каталог, заказы, биллинг, уведомления, общая библиотека, фронтенд и инфраструктура.</p>
       <button class="btn primary" type="submit">{{ ico("box") }}Подключить ShopFlow</button>
     </form>
   </div>

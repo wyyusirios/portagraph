@@ -60,7 +60,7 @@ class AnalysisPipeline:
     def recover_interrupted(self) -> int:
         return self.ctx.db.run(
             "UPDATE analysis_runs SET status = 'FAILED', finished_at = now(), "
-            "error_message = 'Анализ прерван перезапуском сервера — запустите его снова' WHERE status = ANY(%s)", list(ACTIVE))
+            "error_message = 'Анализ прерван перезапуском сервера – запустите его снова' WHERE status = ANY(%s)", list(ACTIVE))
 
     def enqueue(self, project_id: int, trigger: str = "MANUAL", user_id: int | None = None, *, wait: bool = False) -> dict:
         if user_id is not None:
@@ -161,7 +161,7 @@ class AnalysisPipeline:
             self._move(run_id, "COMPLETED", 100, "Анализ завершён")
         except Cancelled:
             self._log(run_id, "Анализ отменён", "warn")
-        except Exception as e:  # noqa: BLE001 — любая ошибка должна перевести задачу в FAILED
+        except Exception as e:  # noqa: BLE001 – любая ошибка должна перевести задачу в FAILED
             msg = getattr(e, "message", None) or f"{type(e).__name__}: {e}"
             log.error("Анализ %s завершился ошибкой\n%s", run_id, traceback.format_exc())
             try:
@@ -201,7 +201,7 @@ class AnalysisPipeline:
             return "demo"
         if kind == "zip":
             if not dest.is_dir():
-                raise BadRequest("Распакованный архив не найден — загрузите ZIP заново")
+                raise BadRequest("Распакованный архив не найден – загрузите ZIP заново")
             return "zip"
         if kind == "local":
             if not pathlib.Path(repo["local_path"]).is_dir():

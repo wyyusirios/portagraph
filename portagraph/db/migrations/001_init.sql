@@ -141,7 +141,7 @@ CREATE TABLE graph_edges (
 CREATE INDEX ix_edges_run ON graph_edges (run_id);
 CREATE INDEX ix_edges_target ON graph_edges (target_node_id);
 
--- Решения архитектора переживают повторный анализ: ключ — полное имя узла
+-- Решения архитектора переживают повторный анализ: ключ – полное имя узла
 CREATE TABLE verifications (
     id             bigserial PRIMARY KEY,
     project_id     bigint        NOT NULL REFERENCES projects (id) ON DELETE CASCADE,

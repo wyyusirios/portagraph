@@ -12,7 +12,7 @@ def create(ctx: Context, user_id: int, name: str, description: str | None) -> di
     if not name:
         raise BadRequest("Название проекта обязательно")
     if len(name) > 120:
-        raise BadRequest("Название проекта — не длиннее 120 символов")
+        raise BadRequest("Название проекта – не длиннее 120 символов")
     with ctx.db.transaction() as c:
         p = c.execute("INSERT INTO projects(name, description, owner_id) VALUES (%s, %s, %s) RETURNING *",
                       (name, (description or "").strip()[:2000] or None, user_id)).one()

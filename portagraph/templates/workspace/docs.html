@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico, doc_pill, empty %}
-{% block title %}{{ doc.title if doc else "Документация" }} — {{ p.name }}{% endblock %}
+{% block title %}{{ doc.title if doc else "Документация" }} – {{ p.name }}{% endblock %}
 {% block page %}docs{% endblock %}
 {% block crumb %}{% if doc %}<a href="{{ url_for('pages.docs', pid=p.id) }}">Документация</a> <span class="sep">›</span> {{ doc.type_ru }}{% else %}Документация{% endif %}{% endblock %}
 {% block top_actions %}{% if doc %}
@@ -13,7 +13,7 @@
 {% if doc %}
 <div class="grid main-side">
   <div class="card" style="padding:28px 32px">
-    <div class="row wrap" style="margin-bottom:18px">{{ doc_pill(doc.status, doc.status_ru) }}<span class="faint small">{{ doc.type_ru }} · {{ doc.author or "—" }} · {{ doc.created_at|dt }}{% if doc.approver %} · утвердил {{ doc.approver }} {{ doc.approved_at|dt }}{% endif %}</span></div>
+    <div class="row wrap" style="margin-bottom:18px">{{ doc_pill(doc.status, doc.status_ru) }}<span class="faint small">{{ doc.type_ru }} · {{ doc.author or "–" }} · {{ doc.created_at|dt }}{% if doc.approver %} · утвердил {{ doc.approver }} {{ doc.approved_at|dt }}{% endif %}</span></div>
     {% if doc.status == "OUTDATED" %}<div class="notice" style="margin-bottom:18px">{{ ico("alert") }}<div>Граф изменился после формирования документа. Сформируйте новую версию, чтобы данные были актуальны.</div></div>{% endif %}
     {% if edit %}
     <form method="post" action="{{ url_for('pages.doc_update', pid=p.id, doc_id=doc.id) }}" class="stack"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -42,11 +42,11 @@
     <select name="node_id" required>{% for s in services %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
     <button class="btn">{{ ico("plus") }}Сформировать</button></form>
 </div>
-{% elif not run %}<div class="notice info">{{ ico("info") }}<div>Документы формируются по графу — сначала запустите анализ.</div></div>{% endif %}
+{% elif not run %}<div class="notice info">{{ ico("info") }}<div>Документы формируются по графу – сначала запустите анализ.</div></div>{% endif %}
 <div class="card flush">
   {% if docs %}<table class="table"><thead><tr><th>Документ</th><th>Тип</th><th>Статус</th><th>Автор</th><th>Создан</th><th></th></tr></thead><tbody>
   {% for d in docs %}<tr class="clickable" onclick="if (!event.target.closest('a,button')) location.href='{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}'"><td><a class="link" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}"><b>{{ d.title }}</b></a></td><td class="muted">{{ d.type_ru }}</td><td>{{ doc_pill(d.status, d.status_ru) }}</td>
-    <td class="muted">{{ d.author or "—" }}</td><td class="muted nowrap">{{ d.created_at|dt }}</td><td class="num nowrap"><a class="btn sm" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}">Открыть</a>
+    <td class="muted">{{ d.author or "–" }}</td><td class="muted nowrap">{{ d.created_at|dt }}</td><td class="num nowrap"><a class="btn sm" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}">Открыть</a>
     <a class="btn sm ghost" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=d.id, format='docx') }}" title="Скачать Word">{{ ico("download") }}Word</a></td></tr>{% endfor %}
   </tbody></table>
   {% else %}{% call empty("doc", "Документов пока нет", "Сформируйте обзор архитектуры, гайд для онбординга или карточку сервиса.") %}{% endcall %}{% endif %}

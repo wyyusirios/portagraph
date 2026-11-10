@@ -27,12 +27,12 @@ def _recommendation(risk: str, changed: list[dict], affected: list[dict]) -> str
     if services:
         lines.append("Сервисы, которым нужен регрессионный прогон: " + ", ".join(a["name"] for a in services[:10]) + ".")
     if async_:
-        lines.append("Есть асинхронные связи через очереди — проверьте формат событий и совместимость схемы сообщений.")
+        lines.append("Есть асинхронные связи через очереди – проверьте формат событий и совместимость схемы сообщений.")
     if any(c["type"] in ("DATABASE", "ENTITY") for c in changed):
-        lines.append("Меняется схема данных — подготовьте миграцию с откатом.")
+        lines.append("Меняется схема данных – подготовьте миграцию с откатом.")
     if weak:
         lines.append("Связи с уверенностью ниже 0,7 (" + ", ".join(a["name"] for a in weak[:6]) +
-                     ") выведены по косвенным признакам — подтвердите их у владельцев.")
+                     ") выведены по косвенным признакам – подтвердите их у владельцев.")
     return "\n".join(lines)
 
 
@@ -51,7 +51,7 @@ def run(ctx: Context, project_id: int, user_id: int, node_ids: list[int], depth:
     g, by_id, edges, run_row = graph_service.load(ctx, project_id)
     missing = [n for n in node_ids if n not in by_id]
     if missing:
-        raise NotFound("Выбранные компоненты отсутствуют в текущем графе — обновите страницу")
+        raise NotFound("Выбранные компоненты отсутствуют в текущем графе – обновите страницу")
     # изменение сервиса/репозитория = изменение всех его вложенных элементов
     expanded = set(node_ids)
     children = {}

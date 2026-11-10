@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico, run_pill, role_pill, spark, risk_pill, doc_pill, conf, health_badge %}
-{% block title %}{{ p.name }} — PortaGraph{% endblock %}
+{% block title %}{{ p.name }} – PortaGraph{% endblock %}
 {% block page %}overview{% endblock %}
 {% block crumb %}Обзор{% endblock %}
 {% block top_actions %}
@@ -12,12 +12,12 @@
 {% block content %}
 <div class="page-head"><div class="title"><h1>{{ p.name }}</h1><p>{{ p.description or "Описание проекта не задано" }}</p></div></div>
 {% if last and last.status not in ("COMPLETED", "FAILED", "CANCELLED") %}
-<a class="notice" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">{{ ico("activity") }}<div class="grow">Идёт анализ: {{ last.stage_message }} — {{ last.progress }}%<div class="progress" style="margin-top:8px"><i style="width: {{ last.progress }}%"></i></div></div></a>
+<a class="notice" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">{{ ico("activity") }}<div class="grow">Идёт анализ: {{ last.stage_message }} – {{ last.progress }}%<div class="progress" style="margin-top:8px"><i style="width: {{ last.progress }}%"></i></div></div></a>
 {% elif last and last.status == "FAILED" %}
 <div class="notice err">{{ ico("alert") }}<div>Последний анализ завершился ошибкой: {{ last.error_message }}. <a class="link" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">Журнал</a></div></div>
 {% endif %}
 {% if not repos %}
-<div class="card"><div class="empty"><div class="ico">{{ ico("repo") }}</div><h3>Подключите репозитории</h3><p>Git-адреса, ZIP-архивы, локальные папки или демо-система ShopFlow — роли PortaGraph определит сам.</p>
+<div class="card"><div class="empty"><div class="ico">{{ ico("repo") }}</div><h3>Подключите репозитории</h3><p>Git-адреса, ZIP-архивы, локальные папки или демо-система ShopFlow – роли PortaGraph определит сам.</p>
 <a class="btn primary" href="{{ url_for('pages.repositories', pid=p.id) }}">{{ ico("plus") }}Подключить</a></div></div>
 {% else %}
 {% set st = run.stats if run else {} %}
@@ -32,7 +32,7 @@
     <span class="delta">{{ counts.get("CLASS", 0) + counts.get("ENTITY", 0) }} классов и сущностей</span>{{ spark(edges_hist) }}</div>
   <div class="card stat"><span class="label">{{ ico("link") }}Межрепозиторные связи</span><span class="value">{{ st.get("cross_repo_links", 0) }}</span>
     <span class="delta">{{ st.get("edges", 0) }} связей всего · {{ st.get("endpoints", 0) }} эндпоинтов</span>{{ spark(cross_hist) }}</div>
-  <div class="card stat"><span class="label">{{ ico("clock") }}Последний анализ</span><span class="value">{{ st.get("duration_sec", "—") }}<span class="small faint"> с</span></span>
+  <div class="card stat"><span class="label">{{ ico("clock") }}Последний анализ</span><span class="value">{{ st.get("duration_sec", "–") }}<span class="small faint"> с</span></span>
     <span class="delta">{{ run.finished_at|ago if run else "не выполнялся" }} · {{ st.get("files_indexed", 0) + st.get("files_unchanged", 0) }} файлов</span>{{ spark(dur_hist) }}</div>
 </div>
 <div class="grid main-side">
@@ -41,7 +41,7 @@
       <div class="card-head" style="padding:16px 18px 0"><h2>Репозитории</h2><span class="tag" style="margin-left:4px">{{ repos|length }}</span><a class="more" href="{{ url_for('pages.repositories', pid=p.id) }}">Все →</a></div>
       <table class="table"><thead><tr><th>Репозиторий</th><th>Роль (определена автоматически)</th><th title="0–100: ≥80 норма, 50–79 внимание, <50 плохо">Здоровье</th><th>Назначение</th></tr></thead><tbody>
       {% for r in repos %}<tr class="{{ 'extra hidden' if loop.index > 3 }}"><td class="nowrap"><b>{{ r.name }}</b><div class="faint small">{{ SOURCE_RU[r.source_kind] }} · {{ r.file_count }} файлов</div></td>
-        <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td><td>{{ health_badge(health.get(r.id)) }}</td><td class="muted small">{{ (r.purpose_summary or "—")|truncate(140) }}</td></tr>{% endfor %}
+        <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td><td>{{ health_badge(health.get(r.id)) }}</td><td class="muted small">{{ (r.purpose_summary or "–")|truncate(140) }}</td></tr>{% endfor %}
       </tbody></table>
       {% if repos|length > 3 %}<button type="button" class="expand" data-expand data-more="Раскрыть все {{ repos|length }}" data-less="Свернуть">
         <span>Раскрыть все {{ repos|length }}</span>{{ ico("chev") }}</button>{% endif %}

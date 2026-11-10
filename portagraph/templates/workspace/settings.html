@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico %}
-{% block title %}Настройки — {{ p.name }}{% endblock %}
+{% block title %}Настройки – {{ p.name }}{% endblock %}
 {% block crumb %}Настройки{% endblock %}
 {% block content %}
 <div class="page-head"><div class="title"><h1>Настройки проекта</h1><p>Название, участники и роли. Права проверяются на сервере для каждого действия.</p></div></div>
@@ -21,7 +21,7 @@
     <div class="card"><div class="card-head"><h2>Права ролей</h2></div>
       <table class="table"><thead><tr><th>Действие</th><th>Наблюдатель</th><th>Разработчик</th><th>Архитектор</th><th>Владелец</th></tr></thead><tbody>
       {% for a, t, lvl in [("view", "Карта, граф, код, документы", 0), ("ask", "Ассистент, impact analysis, черновики документов", 1), ("analyze", "Запуск анализа, подтверждение связей, утверждение документов", 2), ("manage", "Репозитории, участники, архив проекта", 3)] %}
-      <tr><td>{{ t }}</td>{% for i in range(4) %}<td>{% if i >= lvl %}<span class="pill sm ok">{{ ico("check") }}</span>{% else %}<span class="faint">—</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}
+      <tr><td>{{ t }}</td>{% for i in range(4) %}<td>{% if i >= lvl %}<span class="pill sm ok">{{ ico("check") }}</span>{% else %}<span class="faint">–</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}
       </tbody></table></div>
   </div>
   <div class="stack loose">

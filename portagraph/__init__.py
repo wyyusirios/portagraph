@@ -1,4 +1,4 @@
-"""PortaGraph — карта архитектуры распределённых систем по исходному коду."""
+"""PortaGraph – карта архитектуры распределённых систем по исходному коду."""
 from __future__ import annotations
 
 import logging

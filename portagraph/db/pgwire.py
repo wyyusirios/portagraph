@@ -4,7 +4,7 @@
 нативных библиотек. Поддерживается всё, что нужно PortaGraph:
 
 * аутентификация trust, password, MD5 и SCRAM-SHA-256 (по умолчанию в PostgreSQL 14+);
-* простой протокол (несколько SQL-команд за раз — для миграций);
+* простой протокол (несколько SQL-команд за раз – для миграций);
 * расширенный протокол с параметрами `%s` (защита от SQL-инъекций);
 * преобразование основных типов: целые, дробные, bool, text, json/jsonb,
   timestamp/timestamptz, date, bytea, uuid;
@@ -28,7 +28,7 @@ from urllib.parse import unquote, urlparse
 
 
 def _decode_msg(raw: bytes) -> str:
-    """Сообщения об ошибках до входа приходят в кодировке сервера (на русской Windows — cp1251)."""
+    """Сообщения об ошибках до входа приходят в кодировке сервера (на русской Windows – cp1251)."""
     for enc in ("utf-8", "cp1251", "cp866"):
         try:
             return raw.decode(enc)
@@ -193,7 +193,7 @@ class Result:
 
 
 class Connection:
-    """Одно соединение с PostgreSQL. Не потокобезопасно — используйте пул."""
+    """Одно соединение с PostgreSQL. Не потокобезопасно – используйте пул."""
 
     def __init__(self, dsn: str, timeout: float = 30.0):
         u = urlparse(dsn)
@@ -348,7 +348,7 @@ class Connection:
                 if error is not None:
                     self._raise(error)
                 return results
-            # 1, 2, n, s, t, N, S, A — пропускаем
+            # 1, 2, n, s, t, N, S, A – пропускаем
 
     def execute_script(self, sql: str) -> None:
         """Простой протокол: можно передать несколько команд через точку с запятой."""
@@ -377,7 +377,7 @@ class Connection:
 
     @contextmanager
     def transaction(self):
-        if self.status == b"T":  # вложенная транзакция — работаем в текущей
+        if self.status == b"T":  # вложенная транзакция – работаем в текущей
             yield self
             return
         self.execute_script("BEGIN")

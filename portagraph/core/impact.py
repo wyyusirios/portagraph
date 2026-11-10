@@ -69,8 +69,8 @@ def analyze(graph: ArchitectureGraph, changed_ids, max_depth: int = DEFAULT_DEPT
 
 
 def assess_risk(direct_services: int, total_weight: float, affected_count: int) -> str:
-    """CRITICAL — от 4 прямо затронутых сервисов или суммарный вес ≥ 4;
-    HIGH — от 2 сервисов или вес ≥ 2; MEDIUM — затронут хотя бы один компонент."""
+    """CRITICAL – от 4 прямо затронутых сервисов или суммарный вес ≥ 4;
+    HIGH – от 2 сервисов или вес ≥ 2; MEDIUM – затронут хотя бы один компонент."""
     if direct_services >= 4 or total_weight >= 4.0:
         return "CRITICAL"
     if direct_services >= 2 or total_weight >= 2.0:

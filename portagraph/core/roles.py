@@ -96,7 +96,7 @@ def classify(paths: list[str], files: dict[str, str] | None = None) -> Classific
     reasons: list[str] = []
 
     if total and docs / total > 0.7 and not code:
-        return Classification("DOCUMENTATION", 0.85, [f"{docs} из {total} файлов — документация"], stack)
+        return Classification("DOCUMENTATION", 0.85, [f"{docs} из {total} файлов – документация"], stack)
     if infra and (infra / total > 0.3 or not code):
         return Classification("INFRASTRUCTURE", 0.85, [f"{infra} файлов Terraform/Helm/Kubernetes"], stack)
     if frontend:

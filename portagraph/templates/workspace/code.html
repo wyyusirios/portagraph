@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico, empty %}
-{% block title %}{{ file.path if file else "Исходный код" }} — {{ p.name }}{% endblock %}
+{% block title %}{{ file.path if file else "Исходный код" }} – {{ p.name }}{% endblock %}
 {% block page %}code{% endblock %}
 {% block crumb %}{% if file %}<a href="{{ url_for('pages.code_browser', pid=p.id, repo=file.repository_id) }}">{{ file.repo_name }}</a> <span class="sep">›</span> {{ file.path.split('/')[-1] }}{% else %}Исходный код{% endif %}{% endblock %}
 {% block main %}

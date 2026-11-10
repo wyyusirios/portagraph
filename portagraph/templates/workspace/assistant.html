@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% from "partials/macros.html" import ico %}
-{% block title %}Ассистент — {{ p.name }}{% endblock %}
+{% block title %}Ассистент – {{ p.name }}{% endblock %}
 {% block page %}assistant{% endblock %}
 {% block crumb %}Ассистент{% endblock %}
 {% block top_actions %}<span class="pill sm violet" title="{{ mode_note }}">{{ ico("info") }}Демо-режим без LLM</span>{% endblock %}
@@ -19,7 +19,7 @@
     <div class="chat-scroll" id="chat-scroll">
       {% if not messages %}
       <div class="empty" id="chat-empty" style="flex:1"><div class="ico">{{ ico("chat") }}</div><h3>Спросите о системе {{ p.name }}</h3>
-        <p>Ответы строятся только по коду и документации этого проекта — со ссылками на файлы и строки.</p></div>
+        <p>Ответы строятся только по коду и документации этого проекта – со ссылками на файлы и строки.</p></div>
       {% endif %}
       {% for m in messages %}
       <div class="msg {{ 'user' if m.role == 'USER' else 'bot' }}" data-msg='{{ m|tojson|forceescape }}'></div>

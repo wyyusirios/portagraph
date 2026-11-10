@@ -1,9 +1,9 @@
 """AI-ассистент по проекту (UC-10) в демо-режиме без языковой модели.
 
 Ответ собирается из двух источников:
-1. граф архитектуры — если вопрос про связи («кто использует X», «от чего зависит Y»,
+1. граф архитектуры – если вопрос про связи («кто использует X», «от чего зависит Y»,
    «за что отвечает Z»), ответ строится по рёбрам графа с доказательствами;
-2. полнотекстовый поиск PostgreSQL по фрагментам кода и документации — 12 лучших
+2. полнотекстовый поиск PostgreSQL по фрагментам кода и документации – 12 лучших
    фрагментов только этого проекта, со ссылками «файл:строки».
 
 Уверенность ответа ниже 0,4 помечается предупреждением о неполных данных.
@@ -148,14 +148,14 @@ def ask(ctx: Context, project_id: int, user_id: int, session_id: int | None, que
                 if n["type"] == "ENTITY":
                     table = (n["metadata"] or {}).get("table")
                     lines.append(f"- сущность **{n['name']}**" + (f" (таблица `{table}`)" if table else "") +
-                                 f" в {n['repo_name']} — {n['path']}:{n['start_line']}")
+                                 f" в {n['repo_name']} – {n['path']}:{n['start_line']}")
                     citations.append({"file_id": n["source_file_id"], "path": f"{n['repo_name']}/{n['path']}",
                                       "start_line": n["start_line"] or 1, "end_line": n["end_line"] or 1, "label": n["name"]})
                 else:
                     users = ctx.db.all("""SELECT s.name, e.confidence, e.evidence FROM graph_edges e JOIN graph_nodes s ON s.id = e.source_node_id
                                            WHERE e.target_node_id = %s AND NOT e.rejected""", n["id"])
                     engine = (n["metadata"] or {}).get("engine")
-                    lines.append(f"- база данных **{n['name']}**" + (f" ({engine})" if engine else "") + " — работает с ней "
+                    lines.append(f"- база данных **{n['name']}**" + (f" ({engine})" if engine else "") + " – работает с ней "
                                  + ", ".join(f"**{u['name']}**" for u in users))
                     for u in users:
                         for ev in u["evidence"][:1]:
@@ -179,8 +179,8 @@ def ask(ctx: Context, project_id: int, user_id: int, session_id: int | None, que
                     for ev in r["evidence"][:2]:
                         cite_evidence(ev)
             elif rows:
-                lines = [f"- **{r['name']}** — {EDGE_PHRASE.get(r['type'], r['type'])}, уверенность {r['confidence']:.2f}"
-                         + (" (подтверждено архитектором)" if r["verified"] else " — нужна проверка" if r["confidence"] < 0.7 else "")
+                lines = [f"- **{r['name']}** – {EDGE_PHRASE.get(r['type'], r['type'])}, уверенность {r['confidence']:.2f}"
+                         + (" (подтверждено архитектором)" if r["verified"] else " – нужна проверка" if r["confidence"] < 0.7 else "")
                          for r in rows]
                 parts.append(f"От **{main['name']}** зависят {len(rows)} компонент(а):\n" + "\n".join(lines))
                 for r in rows:
@@ -195,7 +195,7 @@ def ask(ctx: Context, project_id: int, user_id: int, session_id: int | None, que
                                   WHERE e.source_node_id = %s AND NOT e.rejected AND e.type <> 'IMPORTS'
                                   ORDER BY e.confidence DESC""", main["id"])
             if rows:
-                lines = [f"- **{r['name']}** ({graph_service.TYPE_RU.get(r['ttype'], r['ttype']).lower()}) — "
+                lines = [f"- **{r['name']}** ({graph_service.TYPE_RU.get(r['ttype'], r['ttype']).lower()}) – "
                          f"{EDGE_PHRASE.get(r['type'], r['type'])}, уверенность {r['confidence']:.2f}" for r in rows]
                 parts.append(f"**{main['name']}** зависит от {len(rows)} компонент(ов):\n" + "\n".join(lines))
                 for r in rows:
@@ -220,7 +220,7 @@ def ask(ctx: Context, project_id: int, user_id: int, session_id: int | None, que
         for h in hits[:5]:
             loc = f"{h['repo_name']}/{h['path']}:{h['start_line']}–{h['end_line']}"
             what = f"`{h['symbol']}`" if h["symbol"] else ("документация" if h["kind"] in ("README", "DOCUMENTATION") else "фрагмент")
-            code_lines.append(f"- {what} — {loc}\n  `{_best_line(h['content'], terms)}`")
+            code_lines.append(f"- {what} – {loc}\n  `{_best_line(h['content'], terms)}`")
             citations.append({"file_id": h["file_id"], "path": f"{h['repo_name']}/{h['path']}", "start_line": h["start_line"],
                               "end_line": h["end_line"], "label": h["symbol"] or h["kind"].lower()})
             used += 1
@@ -235,7 +235,7 @@ def ask(ctx: Context, project_id: int, user_id: int, session_id: int | None, que
         confidence = 0.1
     text = "\n\n".join(parts)
     if confidence < MIN_CONFIDENCE:
-        text += "\n\n⚠ Ответ основан на неполных данных — проверьте указанные источники."
+        text += "\n\n⚠ Ответ основан на неполных данных – проверьте указанные источники."
     seen, uniq = set(), []
     for c in citations:
         k = (c["file_id"], c["start_line"])

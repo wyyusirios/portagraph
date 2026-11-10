@@ -70,7 +70,7 @@ def handle(ctx: Context, pipeline, repo_id: int, body: bytes, headers) -> dict:
     try:
         run = pipeline.enqueue(repo["project_id"], "WEBHOOK")
     except Conflict:
-        return {"status": "queued_later", "reason": "анализ уже выполняется — изменения попадут в следующий запуск"}
+        return {"status": "queued_later", "reason": "анализ уже выполняется – изменения попадут в следующий запуск"}
     ctx.db.run("UPDATE webhook_events SET processed = true, run_id = %s WHERE repository_id = %s AND delivery_id = %s",
                run["id"], repo_id, delivery[:100])
     return {"status": "accepted", "run_id": run["id"]}

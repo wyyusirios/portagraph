@@ -67,7 +67,7 @@ def ask_password() -> bool:
     line = f"DATABASE_URL={dsn}"
     text = re.sub(r"(?m)^DATABASE_URL=.*$", line, text) if re.search(r"(?m)^DATABASE_URL=", text) else (text + ("\n" if text and not text.endswith("\n") else "") + line + "\n")
     env.write_text(text, encoding="utf-8")
-    print("Пароль сохранён в файл .env — в следующий раз вводить не нужно.\n")
+    print("Пароль сохранён в файл .env – в следующий раз вводить не нужно.\n")
     return True
 
 

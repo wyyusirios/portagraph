@@ -16,7 +16,7 @@ try:
     from zoneinfo import ZoneInfo
     import os
     LOCAL_TZ = ZoneInfo(os.environ.get("PORTAGRAPH_TZ", "Europe/Moscow"))
-except Exception:  # noqa: BLE001 — на Windows без tzdata используем фиксированное смещение
+except Exception:  # noqa: BLE001 – на Windows без tzdata используем фиксированное смещение
     LOCAL_TZ = dt.timezone(dt.timedelta(hours=3))
 
 ROLE_RU = access.ROLE_RU
@@ -67,7 +67,7 @@ def csrf_token() -> str:
 
 def _fmt_dt(value, fmt="%d.%m.%Y %H:%M"):
     if not value:
-        return "—"
+        return "–"
     if isinstance(value, str):
         try:
             value = dt.datetime.fromisoformat(value)
@@ -134,8 +134,8 @@ def register(app: Flask) -> None:
             sent = request.headers.get("X-CSRF-Token") or request.form.get("_csrf")
             if not sent or not secrets.compare_digest(sent, session.get("_csrf", "")):
                 if wants_json():
-                    return jsonify(error="Сессия устарела — обновите страницу"), 400
-                flash("Сессия устарела — повторите действие", "error")
+                    return jsonify(error="Сессия устарела – обновите страницу"), 400
+                flash("Сессия устарела – повторите действие", "error")
                 return redirect(request.referrer or url_for("pages.index"))
 
     @app.after_request
@@ -171,7 +171,7 @@ def register(app: Flask) -> None:
     @app.errorhandler(500)
     def _server_error(e):
         if wants_json():
-            return jsonify(error="Внутренняя ошибка сервера — подробности в журнале"), 500
-        return render_template("errors/error.html", code=500, message="Внутренняя ошибка сервера. Подробности — в журнале приложения."), 500
+            return jsonify(error="Внутренняя ошибка сервера – подробности в журнале"), 500
+        return render_template("errors/error.html", code=500, message="Внутренняя ошибка сервера. Подробности – в журнале приложения."), 500
 
     _ = abort  # реэкспорт для блюпринтов

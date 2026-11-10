@@ -48,5 +48,5 @@
 
 {% macro health_badge(h) -%}
 {%- if h -%}<span class="health {{ h.level }}" title="Здоровье {{ h.score }} из 100{% for r in h.reasons %}&#10;{{ r.points }} {{ r.text }}{% endfor %}">{{ h.score }}</span>
-{%- else -%}<span class="faint">—</span>{%- endif -%}
+{%- else -%}<span class="faint">–</span>{%- endif -%}
 {%- endmacro %}

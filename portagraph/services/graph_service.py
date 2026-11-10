@@ -25,7 +25,7 @@ def latest_run(ctx: Context, project_id: int) -> dict | None:
 def require_run(ctx: Context, project_id: int) -> dict:
     run = latest_run(ctx, project_id)
     if not run:
-        raise BadRequest("Для проекта ещё нет завершённого анализа — запустите его на странице репозиториев")
+        raise BadRequest("Для проекта ещё нет завершённого анализа – запустите его на странице репозиториев")
     return run
 
 
@@ -126,7 +126,7 @@ _TEST_RX = r"(^|/)(tests?|__tests__|spec|specs)/|(^|/)test_[^/]*$|_test\.[a-z]+$
 def health(ctx: Context, project_id: int, by_id: dict[int, dict], visible: set[int], edges: list[dict]):
     """Оценка «здоровья» репозитория 0–100: от 100 отнимаются баллы за найденные проблемы.
 
-    ≥ 80 — норма, 50–79 — требует внимания, < 50 — плохо. Каждая причина видна пользователю.
+    ≥ 80 – норма, 50–79 – требует внимания, < 50 – плохо. Каждая причина видна пользователю.
     """
     repos = ctx.db.all(f"""SELECT r.id, r.name, r.status, r.role_confidence, r.detected_role,
                                   coalesce(sum(f.secrets_found), 0) AS secrets, count(f.id) AS files,
@@ -160,16 +160,16 @@ def health(ctx: Context, project_id: int, by_id: dict[int, dict], visible: set[i
         if not r["has_tests"] and r["detected_role"] in ("SERVICE", "FRONTEND", "LIBRARY"):
             minus(10, "Не найдено автотестов")
         if not r["has_readme"]:
-            minus(5, "Нет README — назначение выведено из кода")
+            minus(5, "Нет README – назначение выведено из кода")
         cid = comp_of_repo.get(r["id"])
         if cid:
             mine = [e for e in edges if cid in (e["source"], e["target"])]
             low = [e for e in mine if e["confidence"] < 0.7 and not e["verified"]]
             if low:
-                minus(min(30, 10 * len(low)), f"Связей с уверенностью ниже 0,7: {len(low)} — нужна проверка архитектора")
+                minus(min(30, 10 * len(low)), f"Связей с уверенностью ниже 0,7: {len(low)} – нужна проверка архитектора")
             dependents = {e["source"] for e in edges if e["target"] == cid}
             if len(dependents) >= 4:
-                minus(10, f"От него зависят {len(dependents)} компонентов — изменения рискованны")
+                minus(10, f"От него зависят {len(dependents)} компонентов – изменения рискованны")
             outs = {e["target"] for e in edges if e["source"] == cid}
             for other in sorted({e["source"] for e in edges if e["target"] == cid} & outs):
                 minus(15, f"Циклическая зависимость с {names.get(other, other)}")
@@ -243,7 +243,7 @@ def node_detail(ctx: Context, project_id: int, user_id: int, node_id: int) -> di
                         LEFT JOIN source_files f ON f.id = n.source_file_id
                        WHERE n.id = %s AND n.project_id = %s""", node_id, project_id)
     if not n:
-        raise NotFound("Узел не найден: возможно, граф обновился — обновите страницу")
+        raise NotFound("Узел не найден: возможно, граф обновился – обновите страницу")
 
     def edge_list(direction: str):
         other = "target_node_id" if direction == "out" else "source_node_id"

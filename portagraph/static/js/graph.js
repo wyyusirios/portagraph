@@ -1,6 +1,6 @@
-/* PortaGraph — рендерер графа архитектуры на SVG.
+/* PortaGraph – рендерер графа архитектуры на SVG.
    Раскладка послойная (слева направо по направлению зависимости «A → B: A зависит от B»),
-   порядок внутри слоя — эвристика барицентров. Панорама, масштаб, выбор узла, подсветка соседей,
+   порядок внутри слоя – эвристика барицентров. Панорама, масштаб, выбор узла, подсветка соседей,
    пунктир для связей с уверенностью ниже 0,7, анимация асинхронных связей. */
 "use strict";
 
@@ -56,7 +56,7 @@ const PGGraph = (() => {
       return l;
     };
     ids.forEach((v) => lay(v));
-    // изолированные узлы-хранилища уводим вправо, источники без связей — влево
+    // изолированные узлы-хранилища уводим вправо, источники без связей – влево
     const maxL = Math.max(0, ...layer.values());
     for (const n of nodes) {
       if (opt.sinkRight && ["DATABASE", "MESSAGE_QUEUE", "EXTERNAL_SYSTEM"].includes(n.type) && !out.get(n.id).length) {
@@ -86,7 +86,7 @@ const PGGraph = (() => {
     return layers;
   }
 
-  /* координаты: слева направо (LR) или сверху вниз (TB) — выбирается то, что крупнее помещается в холст */
+  /* координаты: слева направо (LR) или сверху вниз (TB) – выбирается то, что крупнее помещается в холст */
   function place(layers, size, W, H) {
     const tallest = Math.max(1, ...layers.map((L) => L.length));
     const lr = { w: layers.length * (size.w + size.gx) - size.gx, h: tallest * (size.h + size.gy) - size.gy };
@@ -174,7 +174,7 @@ const PGGraph = (() => {
         if (tx > sx + 10) {
           const dx = Math.max(40, (tx - sx) / 2);
           d = `M${sx},${sy} C${sx + dx},${sy} ${tx - dx},${ty} ${tx},${ty}`;
-        } else { // обратная или внутрислойная связь — дугой снизу
+        } else { // обратная или внутрислойная связь – дугой снизу
           const low = Math.max(a.y, b.y) + size.h + 40;
           d = `M${a.x + size.w / 2},${a.y + size.h} C${a.x + size.w / 2},${low} ${b.x + size.w / 2},${low} ${b.x + size.w / 2},${b.y + size.h}`;
         }
@@ -183,7 +183,7 @@ const PGGraph = (() => {
         if (ty > sy + 10) {
           const dy = Math.max(30, (ty - sy) / 2);
           d = `M${sx},${sy} C${sx},${sy + dy} ${tx},${ty - dy} ${tx},${ty}`;
-        } else { // обратная связь — дугой справа
+        } else { // обратная связь – дугой справа
           const right = Math.max(a.x, b.x) + size.w + 50;
           d = `M${a.x + size.w},${a.y + size.h / 2} C${right},${a.y + size.h / 2} ${right},${b.y + size.h / 2} ${b.x + size.w},${b.y + size.h / 2}`;
         }
@@ -408,7 +408,7 @@ const PGGraph = (() => {
     const h = (data.nodes.find((n) => n.id === d.id) || {}).health;
     if (!h) return "";
     const verdict = { ok: "в норме", warn: "требует внимания", bad: "плохое состояние" }[h.level];
-    return `<div><h4>Здоровье репозитория</h4><div class="row" style="margin-bottom:8px"><span class="health ${h.level}">${h.score}</span><span class="muted small">из 100 — ${verdict}</span></div>
+    return `<div><h4>Здоровье репозитория</h4><div class="row" style="margin-bottom:8px"><span class="health ${h.level}">${h.score}</span><span class="muted small">из 100 – ${verdict}</span></div>
       <div class="reasons">${h.reasons.map((r) => `<div><b>${r.points}</b><span class="muted">${PG.esc(r.text)}</span></div>`).join("") || '<span class="faint">Проблем не найдено</span>'}</div></div>`;
   }
   const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; };
@@ -432,7 +432,7 @@ const PGGraph = (() => {
     const isNode = !!vn, decision = vb ? vb.dataset.d : "CONFIRM";
     dlg.querySelector('[data-f="title"]').textContent = isNode ? "Подтвердить компонент" : decision === "CONFIRM" ? "Подтвердить связь" : "Отклонить связь";
     dlg.querySelector('[data-f="text"]').textContent = isNode
-      ? "Подтверждённый компонент получит уверенность 1,0. Можно уточнить его назначение — описание сохранится и при следующих анализах."
+      ? "Подтверждённый компонент получит уверенность 1,0. Можно уточнить его назначение – описание сохранится и при следующих анализах."
       : decision === "CONFIRM" ? "Связь будет отмечена как проверенная архитектором и получит уверенность 1,0." : "Связь исчезнет с карты и не будет учитываться в impact analysis. Решение сохранится при следующих анализах.";
     dlg.querySelector('[data-f="desc-field"]').classList.toggle("hidden", !isNode);
     dlg.querySelector('[data-f="submit"]').textContent = decision === "REJECT" ? "Отклонить" : "Подтвердить";
