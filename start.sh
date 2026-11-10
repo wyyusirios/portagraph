@@ -8,5 +8,6 @@ if [ ! -d .venv ]; then
   $PY -m venv .venv
 fi
 . .venv/bin/activate
+python -m pip install -q --upgrade pip
 pip install -q -r requirements.txt
 python run.py

@@ -281,51 +281,80 @@ def filename(d: dict) -> str:
 
 
 def to_docx(d: dict) -> bytes:
-    """Документ в формате Word (.docx): заголовки, абзацы, списки, таблицы, жирный и моноширинный текст."""
+    """Документ в формате Word (.docx) без внешних библиотек: заголовки, абзацы, списки,
+    таблицы, жирный и моноширинный текст."""
     import io
+    import zipfile
+    from xml.sax.saxutils import escape
 
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: F401
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-    from docx.shared import Cm, Pt, RGBColor
+    def run(text: str, bold=False, mono=False, italic=False, size=None, color=None) -> str:
+        pr = ""
+        if mono:
+            pr += '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>'
+        if bold:
+            pr += "<w:b/>"
+        if italic:
+            pr += "<w:i/>"
+        if color:
+            pr += f'<w:color w:val="{color}"/>'
+        if size or mono:
+            pr += f'<w:sz w:val="{size or 19}"/>'
+        return f'<w:r>{"<w:rPr>" + pr + "</w:rPr>" if pr else ""}<w:t xml:space="preserve">{escape(text)}</w:t></w:r>'
 
-    doc = Document()
-    for sec in doc.sections:
-        sec.left_margin = sec.right_margin = Cm(2)
-        sec.top_margin = sec.bottom_margin = Cm(2)
-    st = doc.styles["Normal"]
-    st.font.name, st.font.size = "Calibri", Pt(11)
-
-    def inline(par, text: str):
+    def inline(text: str, **kw) -> str:
+        out = []
+        text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", text)
         for part in re.split(r"(\*\*[^*]+\*\*|`[^`]+`)", text):
             if not part:
                 continue
-            if part.startswith("**") and part.endswith("**"):
-                par.add_run(part[2:-2]).bold = True
-            elif part.startswith("`") and part.endswith("`"):
-                r = par.add_run(part[1:-1])
-                r.font.name = "Consolas"
-                r.font.size = Pt(9.5)
+            if part.startswith("**") and part.endswith("**") and len(part) > 4:
+                out.append(run(part[2:-2], bold=True, **{k: v for k, v in kw.items() if k != "bold"}))
+            elif part.startswith("`") and part.endswith("`") and len(part) > 2:
+                out.append(run(part[1:-1], mono=True, **{k: v for k, v in kw.items() if k not in ("mono", "size")}))
             else:
-                par.add_run(re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", part))
+                out.append(run(part, **kw))
+        return "".join(out)
 
+    def para(content: str, style: str | None = None, ind: int = 0, after: int | None = None) -> str:
+        pr = f'<w:pStyle w:val="{style}"/>' if style else ""
+        if ind:
+            pr += f'<w:ind w:left="{ind}" w:hanging="300"/>'
+        if after is not None:
+            pr += f'<w:spacing w:after="{after}"/>'
+        return f'<w:p>{"<w:pPr>" + pr + "</w:pPr>" if pr else ""}{content}</w:p>'
+
+    def table(rows: list[list[str]]) -> str:
+        cols = max(len(r) for r in rows)
+        border = "".join(f'<w:{e} w:val="single" w:sz="4" w:color="BFBFBF"/>' for e in ("top", "left", "bottom", "right", "insideH", "insideV"))
+        out = [f'<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>{border}</w:tblBorders>'
+               '<w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'
+               + "".join('<w:gridCol w:w="2000"/>' for _ in range(cols)) + "</w:tblGrid>"]
+        for ri, r in enumerate(rows):
+            out.append("<w:tr>")
+            for ci in range(cols):
+                shade = '<w:shd w:val="clear" w:color="auto" w:fill="F6E7D8"/>' if ri == 0 else ""
+                cell = r[ci] if ci < len(r) else ""
+                out.append(f"<w:tc><w:tcPr>{shade}</w:tcPr>{para(inline(cell, bold=ri == 0, size=19), after=0)}</w:tc>")
+            out.append("</w:tr>")
+        out.append("</w:tbl>")
+        return "".join(out) + para("")
+
+    body = []
     lines = d["content_md"].split("\n")
-    i = 0
+    i, num = 0, 0
     while i < len(lines):
         line = lines[i].rstrip()
         if not line.strip():
             i += 1
+            num = 0
             continue
         h = re.match(r"^(#{1,4})\s+(.*)", line)
         if h:
-            p = doc.add_heading(level=min(len(h.group(1)), 3))
-            p.add_run(h.group(2))
-            for r in p.runs:
-                r.font.color.rgb = RGBColor(0xC4, 0x62, 0x3A)
+            level = len(h.group(1))
+            body.append(para(inline(h.group(2)), "Title" if level == 1 else f"Heading{min(level - 1, 3)}"))
             i += 1
             continue
-        if line.startswith("|"):
+        if line.lstrip().startswith("|"):
             rows = []
             while i < len(lines) and lines[i].strip().startswith("|"):
                 cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
@@ -333,58 +362,68 @@ def to_docx(d: dict) -> bytes:
                     rows.append(cells)
                 i += 1
             if rows:
-                cols = max(len(r) for r in rows)
-                t = doc.add_table(rows=len(rows), cols=cols)
-                t.style = "Table Grid"
-                for ri, r in enumerate(rows):
-                    for ci in range(cols):
-                        cell = t.cell(ri, ci)
-                        cell.paragraphs[0].text = ""
-                        inline(cell.paragraphs[0], r[ci] if ci < len(r) else "")
-                        for run in cell.paragraphs[0].runs:
-                            run.font.size = Pt(9.5)
-                            if ri == 0:
-                                run.bold = True
-                        if ri == 0:
-                            sh = OxmlElement("w:shd")
-                            sh.set(qn("w:val"), "clear")
-                            sh.set(qn("w:fill"), "F6E7D8")
-                            cell._tc.get_or_add_tcPr().append(sh)
-                doc.add_paragraph()
-            continue
-        if line.startswith(">"):
-            p = doc.add_paragraph()
-            inline(p, line.lstrip("> "))
-            for r in p.runs:
-                r.italic = True
-                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-            i += 1
-            continue
-        b = re.match(r"^\s*[-*]\s+(.*)", line)
-        n = re.match(r"^\s*\d+[.)]\s+(.*)", line)
-        if b or n:
-            p = doc.add_paragraph(style="List Bullet" if b else "List Number")
-            inline(p, (b or n).group(1))
-            i += 1
+                body.append(table(rows))
             continue
         if line.startswith("```"):
             i += 1
-            code = []
             while i < len(lines) and not lines[i].startswith("```"):
-                code.append(lines[i])
+                body.append(para(run(lines[i], mono=True), after=0))
                 i += 1
-            p = doc.add_paragraph()
-            r = p.add_run("\n".join(code))
-            r.font.name = "Consolas"
-            r.font.size = Pt(9.5)
             i += 1
             continue
-        para = [line.strip()]
+        if line.startswith(">"):
+            body.append(para(inline(line.lstrip("> "), italic=True, color="666666")))
+            i += 1
+            continue
+        b = re.match(r"^(\s*)[-*]\s+(.*)", line)
+        n = re.match(r"^(\s*)\d+[.)]\s+(.*)", line)
+        if b or n:
+            m = b or n
+            depth = len(m.group(1)) // 2
+            if n:
+                num += 1
+            mark = "•\t" if b else f"{num}.\t"
+            body.append(para(run(mark) + inline(m.group(2)), ind=360 + 360 * depth, after=60))
+            i += 1
+            continue
+        chunk = [line.strip()]
         i += 1
         while i < len(lines) and lines[i].strip() and not re.match(r"^(#|\||>|\s*[-*]\s|\s*\d+[.)]\s|```)", lines[i]):
-            para.append(lines[i].strip())
+            chunk.append(lines[i].strip())
             i += 1
-        inline(doc.add_paragraph(), " ".join(para))
+        body.append(para(inline(" ".join(chunk))))
+
+    W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    document = (f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {W}><w:body>{"".join(body)}'
+                '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" '
+                'w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>')
+
+    def hstyle(sid, name, size, color, before):
+        return (f'<w:style w:type="paragraph" w:styleId="{sid}"><w:name w:val="{name}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/>'
+                f'<w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="{before}" w:after="120"/><w:outlineLvl w:val="{0 if sid == "Title" else int(sid[-1]) - 1}"/></w:pPr>'
+                f'<w:rPr><w:b/><w:color w:val="{color}"/><w:sz w:val="{size}"/></w:rPr></w:style>')
+    styles = (f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles {W}>'
+              '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri"/>'
+              '<w:sz w:val="22"/><w:lang w:val="ru-RU"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/>'
+              '</w:pPr></w:pPrDefault></w:docDefaults>'
+              '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>'
+              + hstyle("Title", "Title", 40, "C4623A", 0) + hstyle("Heading1", "heading 1", 30, "C4623A", 360)
+              + hstyle("Heading2", "heading 2", 25, "333333", 240) + hstyle("Heading3", "heading 3", 23, "333333", 200)
+              + "</w:styles>")
+    ct = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+          '<Default Extension="xml" ContentType="application/xml"/>'
+          '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+          '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>')
+    rels = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>')
+    doc_rels = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>')
     buf = io.BytesIO()
-    doc.save(buf)
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", ct)
+        z.writestr("_rels/.rels", rels)
+        z.writestr("word/document.xml", document)
+        z.writestr("word/styles.xml", styles)
+        z.writestr("word/_rels/document.xml.rels", doc_rels)
     return buf.getvalue()

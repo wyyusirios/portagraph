@@ -29,7 +29,10 @@ import posixpath
 import re
 from dataclasses import dataclass, field
 
-import yaml
+try:  # PyYAML необязателен: на новых версиях Python у него может не быть готовой сборки
+    import yaml
+except ImportError:  # pragma: no cover
+    yaml = None
 
 C_HTTP_CODE, C_HTTP_CONFIG, C_CLIENT, C_TOPIC, C_DB, C_ARTIFACT, C_COMPOSE, C_ENV, C_EXTERNAL = (
     0.90, 0.85, 0.90, 0.90, 0.85, 0.95, 0.60, 0.50, 0.75)
@@ -283,8 +286,10 @@ class LinkExtractor:
     def _compose(self, repo: RepoInput, path: str, text: str) -> list[Link]:
         out = []
         try:
-            doc = yaml.safe_load(text) or {}
-        except yaml.YAMLError:
+            doc = (yaml.safe_load(text) if yaml else mini_yaml(text)) or {}
+        except Exception:  # noqa: BLE001 — битый YAML просто пропускаем
+            return out
+        if not isinstance(doc, dict):
             return out
         services = doc.get("services") or {}
         if not isinstance(services, dict):
@@ -393,3 +398,76 @@ def repo_aliases(name: str, files: dict[str, str]) -> set[str]:
         if m:
             out.add(m.group(1).rsplit("/", 1)[-1])
     return out
+
+
+def _scalar(v: str):
+    v = v.strip()
+    if not v:
+        return None
+    if v[0] in "\"'" and v[-1] == v[0] and len(v) >= 2:
+        return v[1:-1]
+    if v.startswith("[") and v.endswith("]"):
+        return [_scalar(x) for x in v[1:-1].split(",") if x.strip()]
+    if v.startswith("{") and v.endswith("}"):
+        out = {}
+        for part in v[1:-1].split(","):
+            if ":" in part:
+                k, val = part.split(":", 1)
+                out[k.strip().strip("\"'")] = _scalar(val)
+        return out
+    return v
+
+
+def mini_yaml(text: str):
+    """Упрощённый разбор YAML (блочные словари и списки) — запасной вариант без PyYAML,
+    достаточный для docker-compose."""
+    lines = []
+    for raw in text.splitlines():
+        stripped = re.sub(r"(^|\s)#.*$", "", raw).rstrip()
+        if stripped.strip() and stripped.strip() != "---":
+            lines.append((len(stripped) - len(stripped.lstrip()), stripped.strip()))
+
+    def parse(i: int, indent: int):
+        if i >= len(lines):
+            return None, i
+        if lines[i][1].startswith("- ") or lines[i][1] == "-":
+            seq = []
+            while i < len(lines) and lines[i][0] == indent and (lines[i][1].startswith("- ") or lines[i][1] == "-"):
+                item = lines[i][1][1:].strip()
+                i += 1
+                if not item:
+                    val, i = parse(i, lines[i][0]) if i < len(lines) and lines[i][0] > indent else (None, i)
+                    seq.append(val)
+                elif re.match(r"^[\w.\-\"']+\s*:(\s|$)", item):
+                    k, v = item.split(":", 1)
+                    d = {k.strip().strip("\"'"): _scalar(v)}
+                    if i < len(lines) and lines[i][0] > indent:
+                        more, i = parse(i, lines[i][0])
+                        if isinstance(more, dict):
+                            d.update(more)
+                    seq.append(d)
+                else:
+                    seq.append(_scalar(item))
+            return seq, i
+        mp = {}
+        while i < len(lines) and lines[i][0] == indent:
+            line = lines[i][1]
+            if ":" not in line:
+                i += 1
+                continue
+            k, v = line.split(":", 1)
+            k = k.strip().strip("\"'")
+            i += 1
+            if v.strip() in ("", "|", ">", "|-", ">-"):
+                if i < len(lines) and lines[i][0] > indent:
+                    val, i = parse(i, lines[i][0])
+                elif i < len(lines) and lines[i][0] == indent and lines[i][1].startswith("-"):
+                    val, i = parse(i, indent)
+                else:
+                    val = None
+                mp[k] = val
+            else:
+                mp[k] = _scalar(v)
+        return mp, i
+
+    return parse(0, lines[0][0])[0] if lines else {}
