@@ -1,0 +1,26 @@
+{% from "partials/macros.html" import ico %}<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}PortaGraph{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pygments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/omega.css') }}?v={{ version }}">
+  {% block head %}{% endblock %}
+</head>
+<body data-page="{% block page %}{% endblock %}">
+{% include "partials/icons.html" %}
+{% block body %}{% endblock %}
+<div class="flashes" id="flashes">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="flash {{ cat }}">{{ ico("alert" if cat in ("error", "warn") else "check") }}<div>{{ msg }}</div><button class="x" type="button" aria-label="Закрыть">{{ ico("x") }}</button></div>
+  {% endfor %}
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ version }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

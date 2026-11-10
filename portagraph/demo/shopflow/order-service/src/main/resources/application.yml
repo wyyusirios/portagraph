@@ -1,0 +1,12 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:postgresql://orders-db:5432/orders
+    username: orders
+    password: ${ORDERS_DB_PASSWORD}
+  kafka:
+    bootstrap-servers: kafka:9092
+clients:
+  auth: http://auth-service:8080/api/v1
+  catalog: http://catalog-service:8000/api/v1

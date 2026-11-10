@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Регистрация — PortaGraph{% endblock %}
+{% block page %}register{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth-form">
+    <a class="brand" href="/" style="padding:0"><span class="brand-mark"><svg class="i"><use href="#i-logo"/></svg></span>PortaGraph</a>
+    <div class="stack tight"><h1>Регистрация</h1><p class="muted">Аккаунт нужен, чтобы создавать проекты и приглашать команду.</p></div>
+    <form method="post" class="stack">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="field"><label for="full_name">Имя и фамилия</label><input id="full_name" type="text" name="full_name" value="{{ form.full_name }}" required maxlength="200" autofocus></div>
+      <div class="field"><label for="email">Электронная почта</label><input id="email" type="email" name="email" value="{{ form.email }}" required autocomplete="username"></div>
+      <div class="grid c2">
+        <div class="field"><label for="password">Пароль</label><input id="password" type="password" name="password" required minlength="8" autocomplete="new-password"><span class="hint">Не короче 8 символов</span></div>
+        <div class="field"><label for="password2">Повторите пароль</label><input id="password2" type="password" name="password2" required minlength="8" autocomplete="new-password"></div>
+      </div>
+      <button class="btn primary block" type="submit">Создать аккаунт</button>
+    </form>
+    <p class="muted small">Уже есть аккаунт? <a class="link" href="{{ url_for('pages.login') }}">Войти</a></p>
+  </div>
+  {% include "partials/auth_art.html" %}
+</div>
+{% endblock %}

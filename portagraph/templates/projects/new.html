@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico %}
+{% set nav = "new" %}
+{% block title %}Новый проект — PortaGraph{% endblock %}
+{% block crumb %}Новый проект{% endblock %}
+{% block content %}
+<div class="page-head"><div class="title"><h1>Новый проект</h1><p>Проект объединяет репозитории одной системы. Роли репозиториев PortaGraph определит сам.</p></div></div>
+<div class="steps" style="max-width:760px"><div class="step now"><div class="bar"></div>1. Проект</div><div class="step"><div class="bar"></div>2. Репозитории</div><div class="step"><div class="bar"></div>3. Анализ</div></div>
+<form method="post" action="{{ url_for('pages.projects_create') }}" class="card stack" style="max-width:760px">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="field"><label for="name">Название</label><input id="name" name="name" type="text" required maxlength="120" placeholder="Например, ShopFlow" autofocus></div>
+  <div class="field"><label for="description">Описание системы</label><textarea id="description" name="description" maxlength="2000" placeholder="Что делает система и кто её использует — попадёт в обзор архитектуры"></textarea></div>
+  <div class="row"><button class="btn primary" type="submit">Создать и подключить репозитории {{ ico("chev") }}</button><a class="btn ghost" href="{{ url_for('pages.projects_list') }}">Отмена</a></div>
+</form>
+{% endblock %}

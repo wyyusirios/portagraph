@@ -1,0 +1,14 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:postgresql://users-db:5432/users
+    username: auth
+    password: S3cr3tPassw0rd!
+  jpa:
+    hibernate:
+      ddl-auto: validate
+jwt:
+  issuer: shopflow
+  ttl: PT1H
+  signing-key: ${JWT_SIGNING_KEY}

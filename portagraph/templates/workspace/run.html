@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, run_pill %}
+{% block title %}Анализ №{{ run.id }} — {{ p.name }}{% endblock %}
+{% block page %}run{% endblock %}
+{% block crumb %}Анализ №{{ run.id }}{% endblock %}
+{% block content %}
+<div id="run" data-url="{{ url_for('api.run_status', pid=p.id, rid=run.id) }}" data-map="{{ url_for('pages.system_map', pid=p.id) }}" class="stack loose">
+  <div class="page-head"><div class="title"><h1>Анализ №{{ run.id }}</h1><p id="run-stage">{{ run.stage_message or "" }}</p></div>
+    <div class="actions"><span id="run-pill">{{ run_pill(run.status) }}</span>
+      {% if p.permissions.analyze %}<form method="post" action="{{ url_for('pages.cancel', pid=p.id) }}" class="inline" id="cancel-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm danger">{{ ico("x") }}Отменить</button></form>{% endif %}
+      <a class="btn sm primary hidden" id="open-map" href="{{ url_for('pages.system_map', pid=p.id) }}">{{ ico("map") }}Открыть карту</a></div></div>
+  <div class="card stack">
+    <div class="row"><span class="grow faint small">Прогресс</span><b id="run-progress">{{ run.progress }}%</b></div>
+    <div class="progress big"><i id="run-bar" style="width: {{ run.progress }}%"></i></div>
+    <div class="steps" id="run-steps">
+      {% for s, t in [("FETCHING", "Загрузка исходников"), ("INDEXING", "Индексация"), ("ANALYZING", "Роли и назначение"), ("BUILDING_GRAPH", "Граф"), ("COMPLETED", "Готово")] %}
+      <div class="step" data-s="{{ s }}"><div class="bar"></div>{{ t }}</div>{% endfor %}
+    </div>
+  </div>
+  <div class="grid c4" id="run-stats"></div>
+  <div class="notice err hidden" id="run-error">{{ ico("alert") }}<div></div></div>
+  <div class="card"><div class="card-head"><h2>Журнал</h2><span class="more" id="run-time"></span></div><div class="log" id="run-log"></div></div>
+</div>
+{% endblock %}

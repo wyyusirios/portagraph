@@ -1,0 +1,4 @@
+{% from "partials/macros.html" import ico %}
+<div class="content"><div class="card"><div class="empty"><div class="ico">{{ ico("map") }}</div><h3>Граф ещё не построен</h3>
+<p>Подключите репозитории и запустите анализ — после этого здесь появится {{ what }}.</p>
+<a class="btn primary" href="{{ url_for('pages.repositories', pid=p.id) }}">{{ ico("repo") }}К репозиториям</a></div></div></div>

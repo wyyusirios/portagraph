@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, run_pill, role_pill %}
+{% set nav = "projects" %}
+{% block title %}Мои проекты — PortaGraph{% endblock %}
+{% block page %}projects{% endblock %}
+{% block crumb %}Мои проекты{% endblock %}
+{% block top_actions %}<a class="btn primary sm" href="{{ url_for('pages.projects_new') }}">{{ ico("plus") }}Новый проект</a>{% endblock %}
+{% block content %}
+<div class="page-head"><div class="title"><h1>Добрый день, {{ g.user.full_name.split()[0] }}</h1>
+  <p>{{ plural(projects|length, "проект", "проекта", "проектов") }} · выберите систему, чтобы открыть карту архитектуры</p></div></div>
+{% if seeding %}<div class="notice info">{{ ico("info") }}<div>Готовлю демо-проект ShopFlow: подключаю 9 репозиториев и строю граф. Обновите страницу через несколько секунд.</div></div>{% endif %}
+<div class="grid c3">
+  {% for p in projects %}
+  <a class="card project-card" href="{{ url_for('pages.overview', pid=p.id) }}">
+    <div class="row"><span class="logo">{{ p.name[:1]|upper }}</span>
+      <div class="grow"><h2 class="ellipsis">{{ p.name }}</h2><div class="faint small">{{ ROLE_RU[p.role] }} · создан {{ p.created_at|dt("%d.%m.%Y") }}</div></div>
+      {% if p.run_status %}{{ run_pill(p.run_status) }}{% else %}<span class="pill sm">Не анализировался</span>{% endif %}</div>
+    <p class="muted small" style="min-height:42px">{{ (p.description or "Описание не задано")|truncate(150) }}</p>
+    {% if p.run_status and p.run_status not in ("COMPLETED", "FAILED", "CANCELLED") %}<div class="progress"><i style="width: {{ p.run_progress }}%"></i></div>{% endif %}
+    <div class="meta"><span>{{ ico("repo") }}{{ plural(p.repo_count, "репозиторий", "репозитория", "репозиториев") }}</span>
+      <span>{{ ico("file") }}{{ p.file_count }} файлов</span><span>{{ ico("users") }}{{ p.member_count }}</span>
+      {% if p.run_finished %}<span>{{ ico("clock") }}{{ p.run_finished|ago }}</span>{% endif %}</div>
+    {% if p.repo_errors %}<span class="pill sm err">Ошибок подключения: {{ p.repo_errors }}</span>{% endif %}
+  </a>
+  {% endfor %}
+  <a class="card new-card" href="{{ url_for('pages.projects_new') }}">{{ ico("plus") }}<b>Новый проект</b><span class="small faint">Подключите Git, ZIP или демо-систему</span></a>
+</div>
+{% endblock %}

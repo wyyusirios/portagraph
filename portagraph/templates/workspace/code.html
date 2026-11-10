@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, empty %}
+{% block title %}{{ file.path if file else "Исходный код" }} — {{ p.name }}{% endblock %}
+{% block page %}code{% endblock %}
+{% block crumb %}{% if file %}<a href="{{ url_for('pages.code_browser', pid=p.id, repo=file.repository_id) }}">{{ file.repo_name }}</a> <span class="sep">›</span> {{ file.path.split('/')[-1] }}{% else %}Исходный код{% endif %}{% endblock %}
+{% block main %}
+<div class="code-ws">
+  <nav class="tree">
+    <select onchange="location.href='{{ url_for('pages.code_browser', pid=p.id) }}?repo=' + this.value">
+      {% for r in repos %}<option value="{{ r.id }}" {{ 'selected' if r.id == repo_id }}>{{ r.name }}</option>{% endfor %}
+    </select>
+    <div>
+    {% set ns = namespace(dir=None) %}
+    {% for f in files %}{% set d = f.path.rsplit('/', 1)[0] if '/' in f.path else '' %}
+      {% if d != ns.dir %}{% set ns.dir = d %}<div class="dir">{{ d or "/" }}</div>{% endif %}
+      <a class="f {{ 'on' if file and file.id == f.id }}" href="{{ url_for('pages.file_view', pid=p.id, fid=f.id) }}" title="{{ f.path }}">{{ ico("file") }}<span class="ellipsis">{{ f.path.split('/')[-1] }}</span><span class="faint small" style="margin-left:auto">{{ f.line_count }}</span></a>
+    {% else %}<p class="muted small" style="padding:8px">Файлы появятся после анализа.</p>{% endfor %}
+    </div>
+  </nav>
+  <section class="code-main">
+    {% if file %}
+    <div class="code-head">
+      <div class="grow"><div class="mono ellipsis"><b>{{ file.repo_name }}</b>/{{ file.path }}</div>
+        <div class="faint small">{{ file.language or file.kind|lower }} · {{ file.line_count }} строк · {{ (file.size_bytes / 1024)|round(1) }} КБ{% if file.secrets_found %} · <span style="color:var(--warn)">скрыто секретов: {{ file.secrets_found }}</span>{% endif %}</div></div>
+      {% if file.symbols %}<div class="symbols">{% for s in file.symbols %}<a class="tag" href="?l={{ s.start_line }}-{{ s.end_line }}" title="{{ s.type }}">{{ s.name }}</a>{% endfor %}</div>{% endif %}
+    </div>
+    <div id="code" data-sel="{{ sel[0] ~ '-' ~ sel[1] if sel else '' }}">{{ code_html|safe }}</div>
+    {% else %}
+    {% call empty("code", "Выберите файл", "Здесь открываются фрагменты кода, на которые ссылаются граф, ассистент и отчёты.") %}{% endcall %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

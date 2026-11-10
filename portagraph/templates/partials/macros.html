@@ -1,0 +1,47 @@
+{% macro ico(name, cls="") %}<svg class="i {{ cls }}" aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
+
+{% macro role_pill(role, conf=None) -%}
+{%- set c = {"SERVICE": "accent", "FRONTEND": "info", "LIBRARY": "violet", "INFRASTRUCTURE": "rust", "DOCUMENTATION": "ok"}.get(role, "") -%}
+<span class="pill sm {{ c }}">{{ REPO_ROLE_RU.get(role, role) }}{% if conf is not none and conf > 0 %} · {{ "%.2f"|format(conf) }}{% endif %}</span>
+{%- endmacro %}
+
+{% macro run_pill(status) -%}
+{%- set c = {"COMPLETED": "ok", "FAILED": "err", "CANCELLED": ""}.get(status, "accent live") -%}
+<span class="pill sm {{ c }}"><span class="dot"></span>{{ RUN_STATUS_RU.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro repo_status(status, message=None) -%}
+{%- set c = {"READY": "ok", "ERROR": "err", "FETCHING": "accent live"}.get(status, "") -%}
+<span class="pill sm {{ c }}" {% if message %}title="{{ message }}"{% endif %}><span class="dot"></span>{{ REPO_STATUS_RU.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro conf(value, verified=False) -%}
+{%- if verified -%}<span class="pill sm ok">{{ ico("check") }} подтверждено</span>
+{%- else -%}<span class="conf {{ 'low' if value < 0.7 }}" title="Уверенность вывода"><span class="bar"><i style="width: {{ (value * 100)|round|int }}%"></i></span>{{ "%.2f"|format(value) }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro risk_pill(level, text) -%}
+{%- set c = {"LOW": "ok", "MEDIUM": "warn", "HIGH": "accent", "CRITICAL": "err"}[level] -%}
+<span class="pill sm {{ c }}"><span class="dot"></span>{{ text }}</span>
+{%- endmacro %}
+
+{% macro doc_pill(status, text) -%}
+{%- set c = {"DRAFT": "info", "APPROVED": "ok", "OUTDATED": "warn"}[status] -%}
+<span class="pill sm {{ c }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro spark(values, w=220, h=38) -%}
+{%- if values and values|length > 1 -%}
+{%- set mx = values|max -%}{%- set mn = values|min -%}{%- set rng = (mx - mn) or 1 -%}
+{%- set step = w / (values|length - 1) -%}
+{%- set pts = [] -%}
+{%- for v in values -%}{%- set _ = pts.append(("%.1f,%.1f")|format(loop.index0 * step, h - 4 - (v - mn) / rng * (h - 10))) -%}{%- endfor -%}
+<svg class="spark" viewBox="0 0 {{ w }} {{ h }}" preserveAspectRatio="none"><path class="area" d="M0,{{ h }} L{{ pts|join(' L') }} L{{ w }},{{ h }} Z"/><path class="line" d="M{{ pts|join(' L') }}" vector-effect="non-scaling-stroke"/></svg>
+{%- else -%}
+<svg class="spark" viewBox="0 0 {{ w }} {{ h }}" preserveAspectRatio="none"><path class="line" d="M0,{{ h - 8 }} L{{ w }},{{ h - 8 }}" vector-effect="non-scaling-stroke" opacity=".35"/></svg>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro empty(icon, title, text) -%}
+<div class="empty"><div class="ico">{{ ico(icon) }}</div><h3>{{ title }}</h3><p>{{ text }}</p>{{ caller() if caller }}</div>
+{%- endmacro %}

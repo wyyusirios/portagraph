@@ -1,0 +1,45 @@
+services:
+  users-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: users
+  orders-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: orders
+  catalog-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: catalog
+  billing-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: billing
+  kafka:
+    image: bitnami/kafka:3.8
+  auth-service:
+    build: ../auth-service
+    depends_on: [users-db]
+  catalog-service:
+    build: ../catalog-service
+    depends_on: [catalog-db]
+    environment:
+      DATABASE_URL: postgresql://catalog:catalog_pass@catalog-db:5432/catalog
+  order-service:
+    build: ../order-service
+    depends_on: [orders-db, kafka, auth-service, catalog-service]
+  billing-service:
+    build: ../billing-service
+    depends_on: [billing-db, kafka]
+  notification-svc:
+    build: ../notification-svc
+    depends_on: [kafka]
+  api-gateway:
+    build: ../api-gateway
+    depends_on: [auth-service, catalog-service, order-service]
+    ports: ["8080:8080"]
+  web-frontend:
+    build: ../web-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://api-gateway:8080/api/v1
+    depends_on: [api-gateway]

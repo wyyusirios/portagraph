@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico %}
+{% block title %}Ассистент — {{ p.name }}{% endblock %}
+{% block page %}assistant{% endblock %}
+{% block crumb %}Ассистент{% endblock %}
+{% block top_actions %}<span class="pill sm violet" title="{{ mode_note }}">{{ ico("info") }}Демо-режим без LLM</span>{% endblock %}
+{% block main %}
+{% if not run %}{% with what = "ассистент по проекту" %}{% include "partials/no_graph.html" %}{% endwith %}{% else %}
+<div class="chat-ws">
+  <nav class="chat-list">
+    <a class="btn sm block" href="{{ url_for('pages.assistant_view', pid=p.id) }}">{{ ico("plus") }}Новый диалог</a>
+    <div class="nav-label" style="padding:6px 10px 0">История</div>
+    {% for s in sessions %}<a class="s ellipsis {{ 'on' if s.id == sid }}" href="{{ url_for('pages.assistant_view', pid=p.id, sid=s.id) }}" title="{{ s.title }}">{{ s.title }}</a>
+    {% else %}<p class="faint small" style="padding:0 10px">Диалогов пока нет</p>{% endfor %}
+  </nav>
+  <section class="chat" id="chat" data-pid="{{ p.id }}" data-sid="{{ sid or '' }}" data-url="{{ url_for('api.ask', pid=p.id) }}"
+           data-base="{{ url_for('pages.assistant_view', pid=p.id) }}" data-files="{{ url_for('pages.code_browser', pid=p.id) }}"
+           data-can-ask="{{ 1 if p.permissions.ask else 0 }}">
+    <div class="chat-scroll" id="chat-scroll">
+      {% if not messages %}
+      <div class="empty" id="chat-empty" style="flex:1"><div class="ico">{{ ico("chat") }}</div><h3>Спросите о системе {{ p.name }}</h3>
+        <p>Ответы строятся только по коду и документации этого проекта — со ссылками на файлы и строки.</p></div>
+      {% endif %}
+      {% for m in messages %}
+      <div class="msg {{ 'user' if m.role == 'USER' else 'bot' }}" data-msg='{{ m|tojson|forceescape }}'></div>
+      {% endfor %}
+    </div>
+    <div class="composer">
+      {% if not messages %}<div class="suggest" id="suggest">
+        {% for q in ["Кто использует auth-service?", "От чего зависит order-service?", "Где хранится заказ?", "Кто подписан на orders.created?", "Как проверяется токен?"] %}<button type="button">{{ q }}</button>{% endfor %}
+      </div>{% endif %}
+      {% if p.permissions.ask %}
+      <form id="ask-form"><textarea id="question" rows="1" placeholder="Например: какие сервисы вызывают catalog-service?" maxlength="2000" required></textarea>
+        <button class="btn primary icon" type="submit" title="Отправить (Enter)">{{ ico("send") }}</button></form>
+      {% else %}<div class="notice info" style="max-width:900px;margin:0 auto">{{ ico("info") }}<div>Роль «{{ ROLE_RU[p.role] }}» не позволяет задавать вопросы ассистенту.</div></div>{% endif %}
+    </div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, role_pill, repo_status, run_pill, empty %}
+{% block title %}Репозитории — {{ p.name }}{% endblock %}
+{% block page %}repositories{% endblock %}
+{% block crumb %}Репозитории{% endblock %}
+{% block top_actions %}
+{% if p.permissions.analyze and repos %}
+  {% if repos|selectattr("source_kind", "equalto", "git")|list %}
+  <form method="post" action="{{ url_for('pages.sync', pid=p.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm">{{ ico("refresh") }}Синхронизировать</button></form>{% endif %}
+  <form method="post" action="{{ url_for('pages.analyze', pid=p.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn primary sm">{{ ico("play") }}Запустить анализ</button></form>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% if new %}<div class="steps" style="max-width:760px"><div class="step done"><div class="bar"></div>1. Проект</div><div class="step now"><div class="bar"></div>2. Репозитории</div><div class="step"><div class="bar"></div>3. Анализ</div></div>{% endif %}
+<div class="page-head"><div class="title"><h1>Репозитории</h1><p>Роль каждого репозитория (сервис, библиотека, фронтенд, инфраструктура) PortaGraph определяет сам по структуре и коду.</p></div></div>
+{% if last and last.status not in ("COMPLETED", "FAILED", "CANCELLED") %}
+<a class="notice" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">{{ ico("activity") }}<div class="grow">Идёт анализ: {{ last.stage_message }} — {{ last.progress }}%. Открыть журнал →</div></a>{% endif %}
+{% if results %}
+<div class="card"><div class="card-head"><h2>Результат подключения</h2></div><div class="list">
+{% for r in results %}<div class="item"><span class="pill sm {{ 'ok' if r.ok else 'err' }}">{{ ico("check" if r.ok else "x") }}</span><code class="grow ellipsis">{{ r.url }}</code><span class="small {{ 'muted' if r.ok else '' }}" style="{{ '' if r.ok else 'color:#f08b7d' }}">{{ r.message }}</span></div>{% endfor %}
+</div></div>{% endif %}
+
+<div class="grid main-side">
+  <div class="card flush">
+    {% if repos %}
+    <table class="table"><thead><tr><th>Репозиторий</th><th>Роль</th><th>Статус</th><th class="num">Файлов</th><th>Синхронизация</th><th></th></tr></thead><tbody>
+    {% for r in repos %}
+    <tr><td><b>{{ r.name }}</b><div class="faint small ellipsis" style="max-width:340px" title="{{ r.url }}">{{ SOURCE_RU[r.source_kind] }} · {{ r.url }}{% if r.default_branch %} · {{ r.default_branch }}{% endif %}</div>
+        {% if r.purpose_summary %}<div class="muted small" style="margin-top:4px;max-width:520px">{{ r.purpose_summary|truncate(160) }}</div>{% endif %}</td>
+      <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td>
+      <td>{{ repo_status(r.status, r.status_message) }}{% if r.status_message %}<div class="small" style="color:#f08b7d;max-width:220px">{{ r.status_message }}</div>{% endif %}</td>
+      <td class="num">{{ r.file_count }}</td>
+      <td class="muted small nowrap">{{ r.last_synced_at|ago }}{% if r.last_commit_sha %}<div class="mono faint">{{ r.last_commit_sha[:8] }}</div>{% endif %}</td>
+      <td class="num nowrap">
+        {% if p.permissions.manage_repos %}
+        {% if r.source_kind == "git" %}<button class="btn sm ghost icon" type="button" title="Веб-хук" data-webhook="{{ url_for('api.repository_webhook', pid=p.id, rid=r.id) }}">{{ ico("link") }}</button>{% endif %}
+        <form method="post" action="{{ url_for('pages.repo_delete', pid=p.id, rid=r.id) }}" class="inline" data-confirm="Отключить репозиторий «{{ r.name }}»? Его файлы будут удалены из индекса."><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm ghost icon danger" title="Отключить">{{ ico("trash") }}</button></form>
+        {% endif %}
+        <a class="btn sm ghost icon" href="{{ url_for('pages.code_browser', pid=p.id, repo=r.id) }}" title="Файлы">{{ ico("code") }}</a>
+      </td></tr>
+    {% endfor %}
+    </tbody></table>
+    {% else %}
+    {% call empty("repo", "Пока нет репозиториев", "Добавьте адреса Git-репозиториев, загрузите ZIP-архивы или подключите демо-систему ShopFlow из 9 репозиториев — она работает без интернета.") %}{% endcall %}
+    {% endif %}
+  </div>
+
+  {% if p.permissions.manage_repos %}
+  <div class="card">
+    <div class="tabs" data-tabs>
+      <button type="button" class="on" data-tab="git">{{ ico("repo") }}Git</button>
+      <button type="button" data-tab="zip">{{ ico("upload") }}ZIP</button>
+      {% if allow_local %}<button type="button" data-tab="local">{{ ico("folder") }}Папка</button>{% endif %}
+      <button type="button" data-tab="demo">{{ ico("box") }}Демо</button>
+    </div>
+    <form class="tab-panel stack" data-panel="git" method="post" action="{{ url_for('pages.repo_git', pid=p.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="field"><label for="urls">Адреса репозиториев</label><textarea id="urls" name="urls" required placeholder="https://github.com/org/auth-service&#10;https://gitlab.com/org/billing.git"></textarea>
+        <span class="hint">По одному на строку, до 50 за раз. GitHub, GitLab, Bitbucket или любой Git-сервер.</span></div>
+      <div class="field"><label for="token">Токен доступа (для приватных)</label><input id="token" name="token" type="password" autocomplete="off" placeholder="ghp_… / glpat-… / app password">
+        <span class="hint">Хранится зашифрованным, используется только для чтения.</span></div>
+      <button class="btn primary" type="submit">{{ ico("plus") }}Проверить и подключить</button>
+    </form>
+    <form class="tab-panel stack hidden" data-panel="zip" method="post" enctype="multipart/form-data" action="{{ url_for('pages.repo_zip', pid=p.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="field"><label for="archive">ZIP-архив с исходниками</label><input id="archive" type="file" name="archive" accept=".zip" required><span class="hint">До {{ max_mb }} МБ. Секреты в файлах будут скрыты при индексации.</span></div>
+      <div class="field"><label for="zname">Имя репозитория</label><input id="zname" type="text" name="name" placeholder="По имени архива"></div>
+      <button class="btn primary" type="submit">{{ ico("upload") }}Загрузить</button>
+    </form>
+    {% if allow_local %}
+    <form class="tab-panel stack hidden" data-panel="local" method="post" action="{{ url_for('pages.repo_local', pid=p.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="field"><label for="path">Путь к папке на этом компьютере</label><input id="path" type="text" name="path" required placeholder="C:\projects\my-service или ~/code/my-service">
+        <span class="hint">Удобно на защите: папка читается при каждом анализе, без копирования.</span></div>
+      <button class="btn primary" type="submit">{{ ico("folder") }}Подключить папку</button>
+    </form>{% endif %}
+    <form class="tab-panel stack hidden" data-panel="demo" method="post" action="{{ url_for('pages.repo_demo', pid=p.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <p class="muted">ShopFlow — интернет-магазин из 9 репозиториев на Java, Kotlin, Python и TypeScript: шлюз, авторизация, каталог, заказы, биллинг, уведомления, общая библиотека, фронтенд и инфраструктура.</p>
+      <button class="btn primary" type="submit">{{ ico("box") }}Подключить ShopFlow</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<dialog id="webhook-dialog">
+  <div class="d-head"><h2>Веб-хук репозитория</h2></div>
+  <div class="d-body">
+    <p class="muted small">Добавьте веб-хук в настройках репозитория (событие push). После каждого пуша в основную ветку PortaGraph запустит инкрементальный анализ.</p>
+    <div class="field"><label>Payload URL</label><input type="text" readonly data-f="url"></div>
+    <div class="field"><label>Secret</label><input type="text" readonly data-f="webhook_secret"></div>
+    <div class="field"><label>Content type</label><input type="text" readonly value="application/json"></div>
+    <div><div class="label-text" style="margin-bottom:6px">Последние события</div><div class="list small" data-f="events"></div></div>
+  </div>
+  <div class="d-foot"><button class="btn" type="button" data-close>Закрыть</button></div>
+</dialog>
+{% endblock %}

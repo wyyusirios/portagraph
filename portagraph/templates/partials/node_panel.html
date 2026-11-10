@@ -1,0 +1,17 @@
+{% from "partials/macros.html" import ico %}
+<aside class="panel" id="panel">
+  <div class="empty" id="panel-empty" style="flex:1"><div class="ico">{{ ico("graph") }}</div><h3>Выберите компонент</h3>
+    <p>Нажмите на узел, чтобы увидеть назначение, связи и доказательства из кода. Двойной щелчок по сервису открывает его граф кода.</p></div>
+  <div id="panel-node" class="hidden" style="display:contents"></div>
+</aside>
+<dialog id="verify-dialog">
+  <form method="dialog" id="verify-form">
+    <div class="d-head"><h2 data-f="title">Подтверждение</h2></div>
+    <div class="d-body">
+      <p class="muted small" data-f="text"></p>
+      <div class="field" data-f="desc-field"><label for="v-desc">Описание (необязательно)</label><textarea id="v-desc" name="description" maxlength="2000"></textarea>
+        <span class="hint">Решение сохраняется и применяется при следующих анализах.</span></div>
+    </div>
+    <div class="d-foot"><button class="btn" value="cancel" type="button" data-close>Отмена</button><button class="btn primary" value="ok" type="submit" data-f="submit">Подтвердить</button></div>
+  </form>
+</dialog>

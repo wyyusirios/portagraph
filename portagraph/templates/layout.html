@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import ico %}
+{% block body %}
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('pages.projects_list') }}"><span class="brand-mark"><svg class="i"><use href="#i-logo"/></svg></span>PortaGraph</a>
+    {% if g.project %}{% set p = g.project %}
+    <a class="proj-card" href="{{ url_for('pages.projects_list') }}" title="Все проекты">
+      <span class="logo">{{ p.name[:1]|upper }}</span>
+      <span class="grow"><span class="name ellipsis" style="display:block">{{ p.name }}</span><span class="sub">{{ ROLE_RU[p.role] }}</span></span>
+      {{ ico("chev", "faint") }}
+    </a>
+    <nav class="nav nav-group">
+      <div class="nav-label">Проект</div>
+      <a href="{{ url_for('pages.overview', pid=p.id) }}" class="{{ 'active' if nav == 'overview' }}">{{ ico("grid") }}Обзор</a>
+      <a href="{{ url_for('pages.repositories', pid=p.id) }}" class="{{ 'active' if nav == 'repositories' }}">{{ ico("repo") }}Репозитории</a>
+      <a href="{{ url_for('pages.runs', pid=p.id) }}" class="{{ 'active' if nav == 'runs' }}">{{ ico("activity") }}Анализ</a>
+    </nav>
+    <nav class="nav nav-group">
+      <div class="nav-label">Архитектура</div>
+      <a href="{{ url_for('pages.system_map', pid=p.id) }}" class="{{ 'active' if nav == 'map' }}">{{ ico("map") }}Карта системы</a>
+      <div class="sub">
+        <a href="{{ url_for('pages.code_graph', pid=p.id) }}" class="{{ 'active' if nav == 'graph' }}">Граф кода</a>
+        <a href="{{ url_for('pages.code_browser', pid=p.id) }}" class="{{ 'active' if nav == 'code' }}">Исходный код</a>
+      </div>
+    </nav>
+    <nav class="nav nav-group">
+      <div class="nav-label">Инструменты</div>
+      <a href="{{ url_for('pages.assistant_view', pid=p.id) }}" class="{{ 'active' if nav == 'assistant' }}">{{ ico("chat") }}Ассистент</a>
+      <a href="{{ url_for('pages.impact_view', pid=p.id) }}" class="{{ 'active' if nav == 'impact' }}">{{ ico("zap") }}Impact analysis</a>
+      <a href="{{ url_for('pages.docs', pid=p.id) }}" class="{{ 'active' if nav == 'docs' }}">{{ ico("doc") }}Документация</a>
+    </nav>
+    {% else %}
+    <nav class="nav nav-group">
+      <div class="nav-label">Рабочее пространство</div>
+      <a href="{{ url_for('pages.projects_list') }}" class="{{ 'active' if nav == 'projects' }}">{{ ico("grid") }}Мои проекты</a>
+      <a href="{{ url_for('pages.projects_new') }}" class="{{ 'active' if nav == 'new' }}">{{ ico("plus") }}Новый проект</a>
+    </nav>
+    {% endif %}
+    <div class="side-foot">
+      <div class="nav nav-group">
+        {% if g.project %}<a href="{{ url_for('pages.settings', pid=g.project.id) }}" class="{{ 'active' if nav == 'settings' }}">{{ ico("settings") }}Настройки</a>{% endif %}
+        <form method="post" action="{{ url_for('pages.logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <a href="#" onclick="this.closest('form').submit(); return false;">{{ ico("logout") }}Выйти</a></form>
+      </div>
+      <div class="user-chip">
+        <span class="avatar">{{ g.user.full_name|initials }}</span>
+        <span class="grow"><span class="ellipsis" style="display:block;font-weight:500;font-size:13px">{{ g.user.full_name }}</span>
+          <span class="ellipsis faint small" style="display:block">{{ g.user.email }}</span></span>
+      </div>
+      <div class="version"><span>Демо-режим</span><span>v{{ version }}</span></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        {% if g.project %}<a href="{{ url_for('pages.projects_list') }}">Проекты</a><span class="sep">›</span>
+        <a href="{{ url_for('pages.overview', pid=g.project.id) }}">{{ g.project.name }}</a><span class="sep">›</span>{% endif %}
+        <span class="here">{% block crumb %}{% endblock %}</span>
+      </div>
+      <div class="actions">{% block top_actions %}{% endblock %}</div>
+    </header>
+    {% block main %}<div class="content">{% block content %}{% endblock %}</div>{% endblock %}
+  </main>
+</div>
+{% endblock %}

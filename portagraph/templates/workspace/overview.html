@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, run_pill, role_pill, spark, risk_pill, doc_pill, conf %}
+{% block title %}{{ p.name }} — PortaGraph{% endblock %}
+{% block page %}overview{% endblock %}
+{% block crumb %}Обзор{% endblock %}
+{% block top_actions %}
+  {% if p.permissions.analyze and repos %}
+  <form method="post" action="{{ url_for('pages.analyze', pid=p.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn sm" type="submit">{{ ico("refresh") }}Обновить анализ</button></form>{% endif %}
+  <a class="btn primary sm" href="{{ url_for('pages.system_map', pid=p.id) }}">{{ ico("map") }}Карта системы</a>
+{% endblock %}
+{% block content %}
+<div class="page-head"><div class="title"><h1>{{ p.name }}</h1><p>{{ p.description or "Описание проекта не задано" }}</p></div></div>
+{% if last and last.status not in ("COMPLETED", "FAILED", "CANCELLED") %}
+<a class="notice" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">{{ ico("activity") }}<div class="grow">Идёт анализ: {{ last.stage_message }} — {{ last.progress }}%<div class="progress" style="margin-top:8px"><i style="width: {{ last.progress }}%"></i></div></div></a>
+{% elif last and last.status == "FAILED" %}
+<div class="notice err">{{ ico("alert") }}<div>Последний анализ завершился ошибкой: {{ last.error_message }}. <a class="link" href="{{ url_for('pages.run_view', pid=p.id, rid=last.id) }}">Журнал</a></div></div>
+{% endif %}
+{% if not repos %}
+<div class="card"><div class="empty"><div class="ico">{{ ico("repo") }}</div><h3>Подключите репозитории</h3><p>Git-адреса, ZIP-архивы, локальные папки или демо-система ShopFlow — роли PortaGraph определит сам.</p>
+<a class="btn primary" href="{{ url_for('pages.repositories', pid=p.id) }}">{{ ico("plus") }}Подключить</a></div></div>
+{% else %}
+{% set st = run.stats if run else {} %}
+{% set nodes_hist = history|map(attribute="stats")|map(attribute="nodes")|select("number")|list %}
+{% set edges_hist = history|map(attribute="stats")|map(attribute="edges")|select("number")|list %}
+{% set cross_hist = history|map(attribute="stats")|map(attribute="cross_repo_links")|select("number")|list %}
+{% set dur_hist = history|map(attribute="stats")|map(attribute="duration_sec")|select("number")|list %}
+<div class="grid c4">
+  <div class="card stat"><span class="label">{{ ico("repo") }}Репозитории</span><span class="value">{{ repos|length }}</span>
+    <span class="delta">{{ counts.get("SERVICE", 0) }} сервисов · {{ repos|selectattr("detected_role", "equalto", "LIBRARY")|list|length }} библиотек</span>{{ spark(nodes_hist) }}</div>
+  <div class="card stat"><span class="label">{{ ico("graph") }}Узлы графа</span><span class="value">{{ st.get("nodes", 0) }}</span>
+    <span class="delta">{{ counts.get("CLASS", 0) + counts.get("ENTITY", 0) }} классов и сущностей</span>{{ spark(edges_hist) }}</div>
+  <div class="card stat"><span class="label">{{ ico("link") }}Межрепозиторные связи</span><span class="value">{{ st.get("cross_repo_links", 0) }}</span>
+    <span class="delta">{{ st.get("edges", 0) }} связей всего · {{ st.get("endpoints", 0) }} эндпоинтов</span>{{ spark(cross_hist) }}</div>
+  <div class="card stat"><span class="label">{{ ico("clock") }}Последний анализ</span><span class="value">{{ st.get("duration_sec", "—") }}<span class="small faint"> с</span></span>
+    <span class="delta">{{ run.finished_at|ago if run else "не выполнялся" }} · {{ st.get("files_indexed", 0) + st.get("files_unchanged", 0) }} файлов</span>{{ spark(dur_hist) }}</div>
+</div>
+<div class="grid main-side">
+  <div class="stack loose">
+    <div class="card flush">
+      <div class="card-head" style="padding:16px 18px 0"><h2>Репозитории</h2><a class="more" href="{{ url_for('pages.repositories', pid=p.id) }}">Все →</a></div>
+      <table class="table"><thead><tr><th>Репозиторий</th><th>Роль (определена автоматически)</th><th>Назначение</th></tr></thead><tbody>
+      {% for r in repos %}<tr><td class="nowrap"><b>{{ r.name }}</b><div class="faint small">{{ SOURCE_RU[r.source_kind] }} · {{ r.file_count }} файлов</div></td>
+        <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td><td class="muted small">{{ (r.purpose_summary or "—")|truncate(140) }}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    <div class="grid c2">
+      <div class="card"><div class="card-head"><h2>Центральные компоненты</h2><span class="more">входящих связей</span></div>
+        <div class="list">{% for h in hubs %}<a class="item" href="{{ url_for('pages.system_map', pid=p.id, node=h.id) }}"><span class="grow title-line">{{ h.name }}</span><span class="tag">{{ h.n }}</span></a>
+        {% else %}<p class="muted small">Появятся после анализа</p>{% endfor %}</div></div>
+      <div class="card"><div class="card-head"><h2>Требуют проверки</h2><span class="more">уверенность &lt; 0,7</span></div>
+        <div class="list">{% for e in weak %}<a class="item" href="{{ url_for('pages.system_map', pid=p.id, node=e.sid) }}"><span class="grow small"><b>{{ e.sname }}</b> → {{ e.tname }}</span>{{ conf(e.confidence) }}</a>
+        {% else %}<p class="muted small">Все связи надёжны или подтверждены архитектором.</p>{% endfor %}</div></div>
+    </div>
+  </div>
+  <div class="stack loose">
+    <div class="card"><div class="card-head"><h2>Impact-отчёты</h2><a class="more" href="{{ url_for('pages.impact_view', pid=p.id) }}">Все →</a></div>
+      <div class="list">{% for r in reports %}<a class="item" href="{{ url_for('pages.impact_report', pid=p.id, report_id=r.id) }}"><span class="grow"><span class="title-line ellipsis" style="display:block">{{ r.change_description }}</span><span class="faint small">{{ r.author }} · {{ r.created_at|ago }}</span></span>{{ risk_pill(r.risk_level, r.risk_ru) }}</a>
+      {% else %}<p class="muted small">Оцените влияние изменения до релиза.</p>{% endfor %}</div></div>
+    <div class="card"><div class="card-head"><h2>Документы</h2><a class="more" href="{{ url_for('pages.docs', pid=p.id) }}">Все →</a></div>
+      <div class="list">{% for d in docs %}<a class="item" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}"><span class="grow"><span class="title-line ellipsis" style="display:block">{{ d.title }}</span><span class="faint small">{{ d.type_ru }} · {{ d.created_at|ago }}</span></span>{{ doc_pill(d.status, d.status_ru) }}</a>
+      {% else %}<p class="muted small">Сформируйте обзор архитектуры из графа.</p>{% endfor %}</div></div>
+    <div class="card"><div class="card-head"><h2>Команда</h2>{% if p.permissions.manage_members %}<a class="more" href="{{ url_for('pages.settings', pid=p.id) }}">Управлять →</a>{% endif %}</div>
+      <div class="list">{% for m in members %}<div class="item"><span class="avatar sm">{{ m.full_name|initials }}</span><span class="grow ellipsis">{{ m.full_name }}</span><span class="pill sm">{{ ROLE_RU[m.role] }}</span></div>{% endfor %}</div></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

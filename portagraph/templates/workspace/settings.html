@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico %}
+{% block title %}Настройки — {{ p.name }}{% endblock %}
+{% block crumb %}Настройки{% endblock %}
+{% block content %}
+<div class="page-head"><div class="title"><h1>Настройки проекта</h1><p>Название, участники и роли. Права проверяются на сервере для каждого действия.</p></div></div>
+<div class="grid main-side">
+  <div class="stack loose">
+    <div class="card flush">
+      <div class="card-head" style="padding:16px 18px 0"><h2>Участники</h2><span class="more">{{ members|length }}</span></div>
+      <table class="table"><thead><tr><th>Участник</th><th>Роль</th><th>В проекте с</th><th></th></tr></thead><tbody>
+      {% for m in members %}<tr><td><div class="row"><span class="avatar sm">{{ m.full_name|initials }}</span><div><b>{{ m.full_name }}</b>{% if m.user_id == g.user.id %} <span class="faint small">(вы)</span>{% endif %}<div class="faint small">{{ m.email }}</div></div></div></td>
+        <td>{% if p.permissions.manage_members and m.role != "OWNER" %}
+          <form method="post" action="{{ url_for('pages.member_role', pid=p.id, mid=m.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <select name="role" onchange="this.form.submit()" style="width:auto;min-height:32px;padding:4px 30px 4px 10px">{% for r in ["ARCHITECT", "DEVELOPER", "VIEWER"] %}<option value="{{ r }}" {{ 'selected' if r == m.role }}>{{ ROLE_RU[r] }}</option>{% endfor %}</select></form>
+          {% else %}<span class="pill sm {{ 'accent' if m.role == 'OWNER' }}">{{ ROLE_RU[m.role] }}</span>{% endif %}</td>
+        <td class="muted">{{ m.joined_at|dt("%d.%m.%Y") }}</td>
+        <td class="num">{% if p.permissions.manage_members and m.role != "OWNER" %}<form method="post" action="{{ url_for('pages.member_remove', pid=p.id, mid=m.id) }}" class="inline" data-confirm="Удалить {{ m.full_name }} из проекта?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm ghost icon danger">{{ ico("trash") }}</button></form>{% endif %}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    <div class="card"><div class="card-head"><h2>Права ролей</h2></div>
+      <table class="table"><thead><tr><th>Действие</th><th>Наблюдатель</th><th>Разработчик</th><th>Архитектор</th><th>Владелец</th></tr></thead><tbody>
+      {% for a, t, lvl in [("view", "Карта, граф, код, документы", 0), ("ask", "Ассистент, impact analysis, черновики документов", 1), ("analyze", "Запуск анализа, подтверждение связей, утверждение документов", 2), ("manage", "Репозитории, участники, архив проекта", 3)] %}
+      <tr><td>{{ t }}</td>{% for i in range(4) %}<td>{% if i >= lvl %}<span class="pill sm ok">{{ ico("check") }}</span>{% else %}<span class="faint">—</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}
+      </tbody></table></div>
+  </div>
+  <div class="stack loose">
+    {% if p.permissions.manage_members %}
+    <form class="card stack" method="post" action="{{ url_for('pages.member_add', pid=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="card-head" style="margin:0"><h2>Пригласить участника</h2></div>
+      <div class="field"><label for="m-email">Почта зарегистрированного пользователя</label><input id="m-email" type="email" name="email" required></div>
+      <div class="field"><label for="m-role">Роль</label><select id="m-role" name="role">{% for r in ["DEVELOPER", "ARCHITECT", "VIEWER"] %}<option value="{{ r }}">{{ ROLE_RU[r] }}</option>{% endfor %}</select></div>
+      <button class="btn primary">{{ ico("plus") }}Добавить</button></form>
+    <form class="card stack" method="post" action="{{ url_for('pages.settings_update', pid=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="card-head" style="margin:0"><h2>Проект</h2></div>
+      <div class="field"><label for="s-name">Название</label><input id="s-name" type="text" name="name" value="{{ p.name }}" required maxlength="120"></div>
+      <div class="field"><label for="s-desc">Описание</label><textarea id="s-desc" name="description" maxlength="2000">{{ p.description or "" }}</textarea></div>
+      <button class="btn">Сохранить</button></form>
+    {% endif %}
+    {% if p.permissions.delete_project %}
+    <form class="card stack" method="post" action="{{ url_for('pages.archive', pid=p.id) }}" data-confirm="Перенести проект «{{ p.name }}» в архив? Он пропадёт из списка у всех участников.">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-head" style="margin:0"><h2>Архив</h2></div>
+      <p class="muted small">Проект скроется у всех участников. Данные останутся в базе.</p><button class="btn danger">{{ ico("trash") }}Архивировать проект</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, run_pill, empty %}
+{% block title %}Анализ — {{ p.name }}{% endblock %}
+{% block crumb %}Анализ{% endblock %}
+{% block top_actions %}{% if p.permissions.analyze %}
+<form method="post" action="{{ url_for('pages.analyze', pid=p.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn primary sm">{{ ico("play") }}Запустить анализ</button></form>{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head"><div class="title"><h1>История анализа</h1><p>Каждый запуск: загрузка исходников → индексация → определение ролей → построение графа. Повторный анализ инкрементальный.</p></div></div>
+<div class="card flush">
+{% if runs %}
+<table class="table"><thead><tr><th>№</th><th>Статус</th><th>Запуск</th><th>Начат</th><th class="num">Длительность</th><th class="num">Узлы</th><th class="num">Связи</th><th class="num">Изм. файлов</th><th></th></tr></thead><tbody>
+{% for r in runs %}<tr><td>#{{ r.id }}</td><td>{{ run_pill(r.status) }}</td><td class="muted">{{ {"MANUAL": "Вручную", "WEBHOOK": "Веб-хук", "SYNC": "Синхронизация", "SCHEDULE": "По расписанию"}[r.trigger_type] }}</td>
+<td class="muted nowrap">{{ (r.started_at or r.created_at)|dt }}</td><td class="num">{{ r.stats.get("duration_sec", "—") }}{% if r.stats.get("duration_sec") is not none %} с{% endif %}</td>
+<td class="num">{{ r.stats.get("nodes", "—") }}</td><td class="num">{{ r.stats.get("edges", "—") }}</td><td class="num">{{ r.stats.get("files_indexed", "—") }}</td>
+<td class="num"><a class="btn sm ghost" href="{{ url_for('pages.run_view', pid=p.id, rid=r.id) }}">Журнал</a></td></tr>{% endfor %}
+</tbody></table>
+{% else %}{% call empty("activity", "Анализ ещё не запускался", "Подключите репозитории и запустите первый анализ.") %}{% endcall %}{% endif %}
+</div>
+{% endblock %}

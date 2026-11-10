@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ico, doc_pill, empty %}
+{% block title %}{{ doc.title if doc else "Документация" }} — {{ p.name }}{% endblock %}
+{% block page %}docs{% endblock %}
+{% block crumb %}{% if doc %}<a href="{{ url_for('pages.docs', pid=p.id) }}">Документация</a> <span class="sep">›</span> {{ doc.type_ru }}{% else %}Документация{% endif %}{% endblock %}
+{% block top_actions %}{% if doc %}
+  <a class="btn sm" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=doc.id) }}">{{ ico("download") }}Скачать .md</a>
+  {% if p.permissions.generate_docs and doc.status != "APPROVED" and not edit %}<a class="btn sm" href="?edit=1">{{ ico("edit") }}Редактировать</a>{% endif %}
+  {% if p.permissions.approve_docs and doc.status == "DRAFT" %}<form method="post" action="{{ url_for('pages.doc_approve', pid=p.id, doc_id=doc.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm primary">{{ ico("check") }}Утвердить</button></form>{% endif %}
+{% endif %}{% endblock %}
+{% block content %}
+{% if doc %}
+<div class="grid main-side">
+  <div class="card" style="padding:28px 32px">
+    <div class="row wrap" style="margin-bottom:18px">{{ doc_pill(doc.status, doc.status_ru) }}<span class="faint small">{{ doc.type_ru }} · {{ doc.author or "—" }} · {{ doc.created_at|dt }}{% if doc.approver %} · утвердил {{ doc.approver }} {{ doc.approved_at|dt }}{% endif %}</span></div>
+    {% if doc.status == "OUTDATED" %}<div class="notice" style="margin-bottom:18px">{{ ico("alert") }}<div>Граф изменился после формирования документа. Сформируйте новую версию, чтобы данные были актуальны.</div></div>{% endif %}
+    {% if edit %}
+    <form method="post" action="{{ url_for('pages.doc_update', pid=p.id, doc_id=doc.id) }}" class="stack"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <textarea class="code" name="content_md">{{ doc.content_md }}</textarea>
+      <div class="row"><button class="btn primary">Сохранить</button><a class="btn ghost" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=doc.id) }}">Отмена</a></div></form>
+    {% else %}<article class="prose">{{ doc.html|safe }}</article>{% endif %}
+  </div>
+  <div class="stack loose">
+    <div class="card"><div class="card-head"><h2>Все документы</h2></div>
+      <div class="list">{% for d in docs %}<a class="item" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}"><span class="grow"><span class="title-line ellipsis" style="display:block;{{ 'color:var(--accent)' if d.id == doc.id }}">{{ d.title }}</span><span class="faint small">{{ d.created_at|ago }}</span></span>{{ doc_pill(d.status, d.status_ru) }}</a>{% endfor %}</div></div>
+    {% if p.permissions.approve_docs %}<form method="post" action="{{ url_for('pages.doc_delete', pid=p.id, doc_id=doc.id) }}" data-confirm="Удалить документ «{{ doc.title }}»?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm danger block">{{ ico("trash") }}Удалить документ</button></form>{% endif %}
+  </div>
+</div>
+{% else %}
+<div class="page-head"><div class="title"><h1>Документация</h1><p>Документы собираются из графа: назначение сервисов, API, связи с доказательствами. Черновик утверждает архитектор.</p></div></div>
+{% if p.permissions.generate_docs and run %}
+<div class="grid c3">
+  {% for t, title, text, icon in [("ARCHITECTURE_OVERVIEW", "Обзор архитектуры", "Репозитории, сервисы, взаимодействия, асинхронный обмен, данные и открытые вопросы.", "map"),
+                                  ("ONBOARDING_GUIDE", "Гайд для онбординга", "С чего начать новичку: путь запроса, ключевые сервисы, общие библиотеки, запуск.", "users")] %}
+  <form class="card stack" method="post" action="{{ url_for('pages.docs_generate', pid=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="type" value="{{ t }}">
+    <div class="row"><span class="logo" style="background:#2e2519;color:var(--accent)">{{ ico(icon) }}</span><h2>{{ title }}</h2></div><p class="muted small grow">{{ text }}</p>
+    <button class="btn">{{ ico("plus") }}Сформировать</button></form>
+  {% endfor %}
+  <form class="card stack" method="post" action="{{ url_for('pages.docs_generate', pid=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="type" value="SERVICE_CARD">
+    <div class="row"><span class="logo" style="background:#2e2519;color:var(--accent)">{{ ico("box") }}</span><h2>Карточка сервиса</h2></div>
+    <select name="node_id" required>{% for s in services %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+    <button class="btn">{{ ico("plus") }}Сформировать</button></form>
+</div>
+{% elif not run %}<div class="notice info">{{ ico("info") }}<div>Документы формируются по графу — сначала запустите анализ.</div></div>{% endif %}
+<div class="card flush">
+  {% if docs %}<table class="table"><thead><tr><th>Документ</th><th>Тип</th><th>Статус</th><th>Автор</th><th>Создан</th><th></th></tr></thead><tbody>
+  {% for d in docs %}<tr><td><a href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}"><b>{{ d.title }}</b></a></td><td class="muted">{{ d.type_ru }}</td><td>{{ doc_pill(d.status, d.status_ru) }}</td>
+    <td class="muted">{{ d.author or "—" }}</td><td class="muted nowrap">{{ d.created_at|dt }}</td><td class="num"><a class="btn sm ghost icon" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=d.id) }}" title="Скачать .md">{{ ico("download") }}</a></td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}{% call empty("doc", "Документов пока нет", "Сформируйте обзор архитектуры, гайд для онбординга или карточку сервиса.") %}{% endcall %}{% endif %}
+</div>
+{% endif %}
+{% endblock %}

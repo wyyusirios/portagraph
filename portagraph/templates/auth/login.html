@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import ico %}
+{% block title %}Вход — PortaGraph{% endblock %}
+{% block page %}login{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth-form">
+    <a class="brand" href="/" style="padding:0"><span class="brand-mark"><svg class="i"><use href="#i-logo"/></svg></span>PortaGraph</a>
+    <div class="stack tight"><h1>Вход в PortaGraph</h1><p class="muted">Войдите, чтобы открыть проекты и карту архитектуры.</p></div>
+    <form method="post" class="stack" id="login-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="field"><label for="email">Электронная почта</label><input id="email" type="email" name="email" value="{{ email }}" required autocomplete="username" autofocus></div>
+      <div class="field"><label for="password">Пароль</label><input id="password" type="password" name="password" required autocomplete="current-password"></div>
+      <button class="btn primary block" type="submit">Войти</button>
+    </form>
+    <p class="muted small">Нет аккаунта? <a class="link" href="{{ url_for('pages.register') }}">Зарегистрироваться</a></p>
+    {% if demo %}
+    <div class="stack tight">
+      <div class="label-text">Демо-аккаунты (пароль «{{ demo_password }}»)</div>
+      <div class="demo-users">
+        {% for u in demo %}
+        <button type="button" class="demo-user" data-email="{{ u.email }}" data-password="{{ demo_password }}">
+          <span class="avatar sm">{{ u.name|initials }}</span><span class="grow"><span style="display:block;font-weight:500">{{ u.name }}</span><span class="faint small">{{ u.email }}</span></span>
+          <span class="pill sm">{{ ROLE_RU[u.role] }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% include "partials/auth_art.html" %}
+</div>
+{% endblock %}

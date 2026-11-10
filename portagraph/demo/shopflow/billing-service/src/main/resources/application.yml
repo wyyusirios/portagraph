@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://billing-db:5432/billing
+    username: billing
+  kafka:
+    bootstrap-servers: kafka:9092
+yookassa:
+  shop-id: ${YOOKASSA_SHOP_ID}
+  api-url: https://api.yookassa.ru/v3

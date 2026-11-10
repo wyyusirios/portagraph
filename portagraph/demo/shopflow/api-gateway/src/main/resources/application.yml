@@ -1,0 +1,6 @@
+server:
+  port: 8080
+services:
+  auth: http://auth-service:8080
+  catalog: http://catalog-service:8000
+  orders: http://order-service:8080

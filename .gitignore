@@ -1,7 +1,12 @@
 .env
-target/
-node_modules/
-.next/
+data/
+__pycache__/
+*.pyc
+.venv/
+venv/
 *.log
 .idea/
 .vscode/
+target/
+node_modules/
+.next/
