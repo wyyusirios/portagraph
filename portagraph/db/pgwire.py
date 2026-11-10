@@ -27,6 +27,16 @@ from contextlib import contextmanager
 from urllib.parse import unquote, urlparse
 
 
+def _decode_msg(raw: bytes) -> str:
+    """Сообщения об ошибках до входа приходят в кодировке сервера (на русской Windows — cp1251)."""
+    for enc in ("utf-8", "cp1251", "cp866"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", "replace")
+
+
 class DatabaseError(Exception):
     """Ошибка, которую вернул сервер PostgreSQL."""
 
@@ -236,7 +246,7 @@ class Connection:
         fields = {}
         for part in payload.split(b"\x00"):
             if part:
-                fields[chr(part[0])] = part[1:].decode("utf-8", "replace")
+                fields[chr(part[0])] = _decode_msg(part[1:])
         return fields
 
     def _raise(self, payload: bytes):
