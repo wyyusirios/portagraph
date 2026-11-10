@@ -312,16 +312,14 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .zoom { position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; padding: 4px; gap: 2px; z-index: 2; }
 .zoom button { width: 32px; height: 32px; border: 0; background: none; color: var(--muted); border-radius: 7px; cursor: pointer; display: grid; place-items: center; }
 .zoom button:hover { background: var(--hover); color: var(--text); }
-.g-edge { fill: none; stroke: #77776f; stroke-width: 1.6; transition: opacity .15s; }
-.g-edge.t-http { stroke: #8a8a83; }
-.g-edge.t-event { stroke: #9d8cec; stroke-dasharray: 7 5; animation: dash 1.2s linear infinite; }
-.g-edge.t-data { stroke: #7fb069; }
-.g-edge.t-dep { stroke: #6fa8dc; stroke-dasharray: 2 4; stroke-linecap: round; }
-.g-edge.t-code { stroke: #55554f; stroke-width: 1.2; }
-.g-edge.low { stroke: #c9a24a; stroke-dasharray: 3 4; animation: none; }
-.g-edge.verified { stroke-width: 2; }
-.g-edge.dim { opacity: .08; }
-.g-edge.hl { stroke: var(--accent); stroke-width: 2.4; opacity: 1; }
+.g-edge { fill: none; stroke: #55554f; stroke-width: 1.4; }
+.g-edge.async { stroke: #8f7cd6; stroke-dasharray: 6 5; animation: dash 1.2s linear infinite; }
+.g-edge.low { stroke-dasharray: 3 4; stroke: #8a7b5c; }
+.g-edge.verified { stroke: #7fb069; }
+.g-edge.dim { opacity: .12; }
+.g-edge.hl { stroke: var(--accent); stroke-width: 2.2; opacity: 1; }
+.g-edge.hl.async { stroke: #b6a6ff; }
+.g-edge.code { stroke: #4a4a45; stroke-width: 1.1; }
 @keyframes dash { to { stroke-dashoffset: -22; } }
 .g-node { cursor: pointer; }
 .g-node rect.bg { fill: #232321; stroke: #3a3a36; stroke-width: 1.2; transition: stroke .15s; }
@@ -482,3 +480,8 @@ dialog .d-foot { padding: 0 20px 18px; display: flex; justify-content: flex-end;
 .reasons b { color: var(--err); min-width: 30px; font-variant-numeric: tabular-nums; }
 .table tr.clickable { cursor: pointer; }
 .table tr.clickable:hover td { background: var(--hover); }
+.expand { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border: 0;
+  border-top: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-weight: 500; cursor: pointer; }
+.expand:hover { background: var(--hover); color: var(--text); }
+.expand svg { transform: rotate(90deg); transition: transform .2s; }
+.expand.open svg { transform: rotate(-90deg); }

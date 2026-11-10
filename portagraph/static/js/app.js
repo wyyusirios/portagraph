@@ -293,3 +293,12 @@ document.querySelectorAll("[data-webhook]").forEach((b) => b.addEventListener("c
     } catch (err) { status.textContent = ""; PG.toast(err.message, "error"); }
   });
 })();
+
+/* свернуть / раскрыть длинные списки (обзор проекта) */
+document.querySelectorAll("[data-expand]").forEach((b) => b.addEventListener("click", () => {
+  const card = b.closest("[data-collapsible]");
+  const open = !b.classList.contains("open");
+  card.querySelectorAll(".extra").forEach((r) => r.classList.toggle("hidden", !open));
+  b.classList.toggle("open", open);
+  b.querySelector("span").textContent = open ? b.dataset.less : b.dataset.more;
+}));

@@ -37,12 +37,14 @@
 </div>
 <div class="grid main-side">
   <div class="stack loose">
-    <div class="card flush">
-      <div class="card-head" style="padding:16px 18px 0"><h2>Репозитории</h2><a class="more" href="{{ url_for('pages.repositories', pid=p.id) }}">Все →</a></div>
+    <div class="card flush" data-collapsible>
+      <div class="card-head" style="padding:16px 18px 0"><h2>Репозитории</h2><span class="tag" style="margin-left:4px">{{ repos|length }}</span><a class="more" href="{{ url_for('pages.repositories', pid=p.id) }}">Все →</a></div>
       <table class="table"><thead><tr><th>Репозиторий</th><th>Роль (определена автоматически)</th><th title="0–100: ≥80 норма, 50–79 внимание, <50 плохо">Здоровье</th><th>Назначение</th></tr></thead><tbody>
-      {% for r in repos %}<tr><td class="nowrap"><b>{{ r.name }}</b><div class="faint small">{{ SOURCE_RU[r.source_kind] }} · {{ r.file_count }} файлов</div></td>
+      {% for r in repos %}<tr class="{{ 'extra hidden' if loop.index > 3 }}"><td class="nowrap"><b>{{ r.name }}</b><div class="faint small">{{ SOURCE_RU[r.source_kind] }} · {{ r.file_count }} файлов</div></td>
         <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td><td>{{ health_badge(health.get(r.id)) }}</td><td class="muted small">{{ (r.purpose_summary or "—")|truncate(140) }}</td></tr>{% endfor %}
       </tbody></table>
+      {% if repos|length > 3 %}<button type="button" class="expand" data-expand data-more="Раскрыть все {{ repos|length }}" data-less="Свернуть">
+        <span>Раскрыть все {{ repos|length }}</span>{{ ico("chev") }}</button>{% endif %}
     </div>
     <div class="grid c2">
       <div class="card"><div class="card-head"><h2>Центральные компоненты</h2><span class="more">входящих связей</span></div>
