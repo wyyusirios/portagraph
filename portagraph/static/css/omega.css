@@ -480,3 +480,5 @@ dialog .d-foot { padding: 0 20px 18px; display: flex; justify-content: flex-end;
 .reasons { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
 .reasons div { display: flex; gap: 8px; }
 .reasons b { color: var(--err); min-width: 30px; font-variant-numeric: tabular-nums; }
+.table tr.clickable { cursor: pointer; }
+.table tr.clickable:hover td { background: var(--hover); }

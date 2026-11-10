@@ -392,6 +392,10 @@ def doc_export(pid, doc_id):
     d = docs_service.get(ctx(), pid, g.user["id"], doc_id)
     from urllib.parse import quote
     name = docs_service.filename(d)
+    if request.args.get("format") == "docx":
+        name = name[:-3] + ".docx"
+        return Response(docs_service.to_docx(d), mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        headers={"Content-Disposition": f"attachment; filename=\"document.docx\"; filename*=UTF-8''{quote(name)}"})
     return Response(d["content_md"], mimetype="text/markdown; charset=utf-8",
                     headers={"Content-Disposition": f"attachment; filename=\"document.md\"; filename*=UTF-8''{quote(name)}"})
 

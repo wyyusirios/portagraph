@@ -25,10 +25,18 @@ EDGE_RU = graph_service.EDGE_RU
 
 def render_markdown(text: str) -> str:
     """Markdown → HTML без пропуска «сырого» HTML (документ могут редактировать участники проекта)."""
-    m = md.Markdown(extensions=["tables", "fenced_code", "sane_lists"])
-    m.preprocessors.deregister("html_block")
-    m.inlinePatterns.deregister("html")
-    return re.sub(r'(href|src)="\s*(javascript|data|vbscript):[^"]*"', r'\1="#"', m.convert(text), flags=re.I)
+    import html as _html
+    try:
+        m = md.Markdown(extensions=["tables", "fenced_code", "sane_lists"])
+        for reg, name in ((m.preprocessors, "html_block"), (m.inlinePatterns, "html")):
+            try:
+                reg.deregister(name)
+            except (KeyError, ValueError):  # в другой версии Markdown имя может отличаться
+                pass
+        out = m.convert(text)
+    except Exception:  # noqa: BLE001 — документ всё равно должен открыться
+        return "<pre>" + _html.escape(text) + "</pre>"
+    return re.sub(r'(href|src)="\s*(javascript|data|vbscript):[^"]*"', r'\1="#"', out, flags=re.I)
 
 
 def _model(ctx: Context, project_id: int) -> dict:
@@ -270,3 +278,113 @@ def delete(ctx: Context, project_id: int, user_id: int, doc_id: int) -> None:
 def filename(d: dict) -> str:
     base = re.sub(r"[^\w\-]+", "-", d["title"].lower()).strip("-")[:80] or "document"
     return f"{base}-{dt.date.today().isoformat()}.md"
+
+
+def to_docx(d: dict) -> bytes:
+    """Документ в формате Word (.docx): заголовки, абзацы, списки, таблицы, жирный и моноширинный текст."""
+    import io
+
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: F401
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Cm, Pt, RGBColor
+
+    doc = Document()
+    for sec in doc.sections:
+        sec.left_margin = sec.right_margin = Cm(2)
+        sec.top_margin = sec.bottom_margin = Cm(2)
+    st = doc.styles["Normal"]
+    st.font.name, st.font.size = "Calibri", Pt(11)
+
+    def inline(par, text: str):
+        for part in re.split(r"(\*\*[^*]+\*\*|`[^`]+`)", text):
+            if not part:
+                continue
+            if part.startswith("**") and part.endswith("**"):
+                par.add_run(part[2:-2]).bold = True
+            elif part.startswith("`") and part.endswith("`"):
+                r = par.add_run(part[1:-1])
+                r.font.name = "Consolas"
+                r.font.size = Pt(9.5)
+            else:
+                par.add_run(re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", part))
+
+    lines = d["content_md"].split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip()
+        if not line.strip():
+            i += 1
+            continue
+        h = re.match(r"^(#{1,4})\s+(.*)", line)
+        if h:
+            p = doc.add_heading(level=min(len(h.group(1)), 3))
+            p.add_run(h.group(2))
+            for r in p.runs:
+                r.font.color.rgb = RGBColor(0xC4, 0x62, 0x3A)
+            i += 1
+            continue
+        if line.startswith("|"):
+            rows = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
+                if not all(re.fullmatch(r":?-{2,}:?", c) for c in cells):
+                    rows.append(cells)
+                i += 1
+            if rows:
+                cols = max(len(r) for r in rows)
+                t = doc.add_table(rows=len(rows), cols=cols)
+                t.style = "Table Grid"
+                for ri, r in enumerate(rows):
+                    for ci in range(cols):
+                        cell = t.cell(ri, ci)
+                        cell.paragraphs[0].text = ""
+                        inline(cell.paragraphs[0], r[ci] if ci < len(r) else "")
+                        for run in cell.paragraphs[0].runs:
+                            run.font.size = Pt(9.5)
+                            if ri == 0:
+                                run.bold = True
+                        if ri == 0:
+                            sh = OxmlElement("w:shd")
+                            sh.set(qn("w:val"), "clear")
+                            sh.set(qn("w:fill"), "F6E7D8")
+                            cell._tc.get_or_add_tcPr().append(sh)
+                doc.add_paragraph()
+            continue
+        if line.startswith(">"):
+            p = doc.add_paragraph()
+            inline(p, line.lstrip("> "))
+            for r in p.runs:
+                r.italic = True
+                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+            i += 1
+            continue
+        b = re.match(r"^\s*[-*]\s+(.*)", line)
+        n = re.match(r"^\s*\d+[.)]\s+(.*)", line)
+        if b or n:
+            p = doc.add_paragraph(style="List Bullet" if b else "List Number")
+            inline(p, (b or n).group(1))
+            i += 1
+            continue
+        if line.startswith("```"):
+            i += 1
+            code = []
+            while i < len(lines) and not lines[i].startswith("```"):
+                code.append(lines[i])
+                i += 1
+            p = doc.add_paragraph()
+            r = p.add_run("\n".join(code))
+            r.font.name = "Consolas"
+            r.font.size = Pt(9.5)
+            i += 1
+            continue
+        para = [line.strip()]
+        i += 1
+        while i < len(lines) and lines[i].strip() and not re.match(r"^(#|\||>|\s*[-*]\s|\s*\d+[.)]\s|```)", lines[i]):
+            para.append(lines[i].strip())
+            i += 1
+        inline(doc.add_paragraph(), " ".join(para))
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()

@@ -4,7 +4,8 @@
 {% block page %}docs{% endblock %}
 {% block crumb %}{% if doc %}<a href="{{ url_for('pages.docs', pid=p.id) }}">Документация</a> <span class="sep">›</span> {{ doc.type_ru }}{% else %}Документация{% endif %}{% endblock %}
 {% block top_actions %}{% if doc %}
-  <a class="btn sm" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=doc.id) }}">{{ ico("download") }}Скачать .md</a>
+  <a class="btn sm" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=doc.id, format='docx') }}">{{ ico("download") }}Word</a>
+  <a class="btn sm" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=doc.id) }}">{{ ico("download") }}.md</a>
   {% if p.permissions.generate_docs and doc.status != "APPROVED" and not edit %}<a class="btn sm" href="?edit=1">{{ ico("edit") }}Редактировать</a>{% endif %}
   {% if p.permissions.approve_docs and doc.status == "DRAFT" %}<form method="post" action="{{ url_for('pages.doc_approve', pid=p.id, doc_id=doc.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn sm primary">{{ ico("check") }}Утвердить</button></form>{% endif %}
 {% endif %}{% endblock %}
@@ -44,8 +45,9 @@
 {% elif not run %}<div class="notice info">{{ ico("info") }}<div>Документы формируются по графу — сначала запустите анализ.</div></div>{% endif %}
 <div class="card flush">
   {% if docs %}<table class="table"><thead><tr><th>Документ</th><th>Тип</th><th>Статус</th><th>Автор</th><th>Создан</th><th></th></tr></thead><tbody>
-  {% for d in docs %}<tr><td><a href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}"><b>{{ d.title }}</b></a></td><td class="muted">{{ d.type_ru }}</td><td>{{ doc_pill(d.status, d.status_ru) }}</td>
-    <td class="muted">{{ d.author or "—" }}</td><td class="muted nowrap">{{ d.created_at|dt }}</td><td class="num"><a class="btn sm ghost icon" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=d.id) }}" title="Скачать .md">{{ ico("download") }}</a></td></tr>{% endfor %}
+  {% for d in docs %}<tr class="clickable" onclick="if (!event.target.closest('a,button')) location.href='{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}'"><td><a class="link" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}"><b>{{ d.title }}</b></a></td><td class="muted">{{ d.type_ru }}</td><td>{{ doc_pill(d.status, d.status_ru) }}</td>
+    <td class="muted">{{ d.author or "—" }}</td><td class="muted nowrap">{{ d.created_at|dt }}</td><td class="num nowrap"><a class="btn sm" href="{{ url_for('pages.doc_view', pid=p.id, doc_id=d.id) }}">Открыть</a>
+    <a class="btn sm ghost" href="{{ url_for('pages.doc_export', pid=p.id, doc_id=d.id, format='docx') }}" title="Скачать Word">{{ ico("download") }}Word</a></td></tr>{% endfor %}
   </tbody></table>
   {% else %}{% call empty("doc", "Документов пока нет", "Сформируйте обзор архитектуры, гайд для онбординга или карточку сервиса.") %}{% endcall %}{% endif %}
 </div>
