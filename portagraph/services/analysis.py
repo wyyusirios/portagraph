@@ -380,9 +380,11 @@ class AnalysisPipeline:
             module_ids: dict[str, int] = {}
 
             def module_for(f, s) -> int:
-                if s.package and s.language in ("java", "kotlin", "scala", "csharp"):
+                if re.search(r"(^|/)(src/test|tests?|__tests__|spec)/", f["path"]) or re.search(r"\.(test|spec)\.[jt]sx?$", f["path"]):
+                    mname = "tests"
+                elif s.package and s.language in ("java", "kotlin", "scala", "csharp"):
                     rest = s.package.split(".")[len(common):]
-                    mname = rest[0] if rest else (s.package.split(".")[-1] if s.package else "(корень)")
+                    mname = rest[0] if rest else "(корень)"
                 else:
                     parts = f["path"].split("/")[:-1]
                     parts = [p for p in parts if p not in ("src", "main", "lib", "java", "kotlin")] or ["(корень)"]
@@ -564,6 +566,7 @@ def _common_prefix(lists: list[list[str]]) -> list[str]:
             out.append(parts[0])
         else:
             break
-    # общий префикс пакета не должен съедать весь пакет единственного класса
-    shortest = min(len(x) for x in lists)
-    return out[: max(0, min(len(out), shortest - 1))]
+    # если все классы в одном пакете, модулем становится последний сегмент пакета
+    if all(len(x) == len(out) for x in lists):
+        out = out[:-1]
+    return out

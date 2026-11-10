@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% from "partials/macros.html" import ico, role_pill, repo_status, run_pill, empty %}
+{% from "partials/macros.html" import ico, role_pill, repo_status, run_pill, empty, health_badge %}
 {% block title %}Репозитории — {{ p.name }}{% endblock %}
 {% block page %}repositories{% endblock %}
 {% block crumb %}Репозитории{% endblock %}
@@ -23,11 +23,12 @@
 <div class="grid main-side">
   <div class="card flush">
     {% if repos %}
-    <table class="table"><thead><tr><th>Репозиторий</th><th>Роль</th><th>Статус</th><th class="num">Файлов</th><th>Синхронизация</th><th></th></tr></thead><tbody>
+    <table class="table"><thead><tr><th>Репозиторий</th><th>Роль</th><th title="0–100: ≥80 норма, 50–79 внимание, <50 плохо">Здоровье</th><th>Статус</th><th class="num">Файлов</th><th>Синхронизация</th><th></th></tr></thead><tbody>
     {% for r in repos %}
     <tr><td><b>{{ r.name }}</b><div class="faint small ellipsis" style="max-width:340px" title="{{ r.url }}">{{ SOURCE_RU[r.source_kind] }} · {{ r.url }}{% if r.default_branch %} · {{ r.default_branch }}{% endif %}</div>
         {% if r.purpose_summary %}<div class="muted small" style="margin-top:4px;max-width:520px">{{ r.purpose_summary|truncate(160) }}</div>{% endif %}</td>
       <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td>
+      <td>{{ health_badge(health.get(r.id)) }}</td>
       <td>{{ repo_status(r.status, r.status_message) }}{% if r.status_message %}<div class="small" style="color:#f08b7d;max-width:220px">{{ r.status_message }}</div>{% endif %}</td>
       <td class="num">{{ r.file_count }}</td>
       <td class="muted small nowrap">{{ r.last_synced_at|ago }}{% if r.last_commit_sha %}<div class="mono faint">{{ r.last_commit_sha[:8] }}</div>{% endif %}</td>

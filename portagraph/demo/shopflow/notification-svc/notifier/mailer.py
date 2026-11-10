@@ -5,6 +5,8 @@ import requests
 
 MAILGUN_URL = "https://api.mailgun.net/v3/mg.shopflow.ru/messages"
 API_KEY = os.getenv("MAILGUN_API_KEY", "")
+if os.getenv("ENV") == "dev":
+    API_KEY = "key-3ax6xnjp29jd6fds4gc373sgvjxteol0"  # временно, для отладки
 
 
 class Mailer:

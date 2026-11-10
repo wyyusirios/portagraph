@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% from "partials/macros.html" import ico, run_pill, role_pill, spark, risk_pill, doc_pill, conf %}
+{% from "partials/macros.html" import ico, run_pill, role_pill, spark, risk_pill, doc_pill, conf, health_badge %}
 {% block title %}{{ p.name }} — PortaGraph{% endblock %}
 {% block page %}overview{% endblock %}
 {% block crumb %}Обзор{% endblock %}
@@ -39,9 +39,9 @@
   <div class="stack loose">
     <div class="card flush">
       <div class="card-head" style="padding:16px 18px 0"><h2>Репозитории</h2><a class="more" href="{{ url_for('pages.repositories', pid=p.id) }}">Все →</a></div>
-      <table class="table"><thead><tr><th>Репозиторий</th><th>Роль (определена автоматически)</th><th>Назначение</th></tr></thead><tbody>
+      <table class="table"><thead><tr><th>Репозиторий</th><th>Роль (определена автоматически)</th><th title="0–100: ≥80 норма, 50–79 внимание, <50 плохо">Здоровье</th><th>Назначение</th></tr></thead><tbody>
       {% for r in repos %}<tr><td class="nowrap"><b>{{ r.name }}</b><div class="faint small">{{ SOURCE_RU[r.source_kind] }} · {{ r.file_count }} файлов</div></td>
-        <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td><td class="muted small">{{ (r.purpose_summary or "—")|truncate(140) }}</td></tr>{% endfor %}
+        <td>{{ role_pill(r.detected_role, r.role_confidence) }}</td><td>{{ health_badge(health.get(r.id)) }}</td><td class="muted small">{{ (r.purpose_summary or "—")|truncate(140) }}</td></tr>{% endfor %}
       </tbody></table>
     </div>
     <div class="grid c2">

@@ -106,8 +106,85 @@ def overview(ctx: Context, project_id: int, user_id: int) -> dict:
         out_edges.append(v)
     other = [{"id": n["id"], "name": n["name"], "role": n.get("repo_role"), "description": n["description"]}
              for n in by_id.values() if n["type"] == "REPOSITORY" and n.get("repo_role") not in ("LIBRARY", "SERVICE", "FRONTEND")]
-    return {"nodes": [_node_json(by_id[i]) for i in visible], "edges": out_edges, "other_repositories": other,
+    repo_health, comp_health = health(ctx, project_id, by_id, visible, out_edges)
+    nodes = []
+    for i in visible:
+        j = _node_json(by_id[i])
+        j["health"] = comp_health.get(i)
+        j["links"] = len({e["target"] if e["source"] == i else e["source"] for e in out_edges if i in (e["source"], e["target"])})
+        nodes.append(j)
+    for o in other:
+        o["health"] = repo_health.get(by_id[o["id"]]["repository_id"])
+    return {"nodes": nodes, "edges": out_edges, "other_repositories": other, "repo_health": repo_health,
             "run": {"id": run["id"], "finished_at": run["finished_at"], "stats": run["stats"]}}
+
+
+HEALTH_OK, HEALTH_WARN = 80, 50
+_TEST_RX = r"(^|/)(tests?|__tests__|spec|specs)/|(^|/)test_[^/]*$|_test\.[a-z]+$|Tests?\.(java|kt|cs|scala)$|\.(spec|test)\.[jt]sx?$"
+
+
+def health(ctx: Context, project_id: int, by_id: dict[int, dict], visible: set[int], edges: list[dict]):
+    """Оценка «здоровья» репозитория 0–100: от 100 отнимаются баллы за найденные проблемы.
+
+    ≥ 80 — норма, 50–79 — требует внимания, < 50 — плохо. Каждая причина видна пользователю.
+    """
+    repos = ctx.db.all(f"""SELECT r.id, r.name, r.status, r.role_confidence, r.detected_role,
+                                  coalesce(sum(f.secrets_found), 0) AS secrets, count(f.id) AS files,
+                                  coalesce(bool_or(f.path ~ '{_TEST_RX}'), false) AS has_tests,
+                                  coalesce(bool_or(f.kind = 'README'), false) AS has_readme
+                             FROM repositories r LEFT JOIN source_files f ON f.repository_id = r.id
+                            WHERE r.project_id = %s GROUP BY r.id""", project_id)
+    comp_of_repo = {}
+    for cid in visible:
+        n = by_id[cid]
+        if n["type"] in ("SERVICE", "REPOSITORY") and n["repository_id"]:
+            comp_of_repo[n["repository_id"]] = cid
+    names = {cid: by_id[cid]["name"] for cid in visible}
+    repo_h, comp_h = {}, {}
+    for r in repos:
+        score, reasons = 100, []
+
+        def minus(points, text):
+            nonlocal score
+            score -= points
+            reasons.append({"points": -points, "text": text})
+
+        if r["status"] == "ERROR":
+            minus(50, "Не удалось загрузить исходники")
+        if r["files"] == 0:
+            minus(30, "Нет проиндексированных файлов")
+        if r["role_confidence"] < 0.7:
+            minus(15, f"Роль определена неуверенно ({r['role_confidence']:.2f})")
+        if r["secrets"]:
+            minus(min(30, 10 * r["secrets"]), f"Секреты в коде: {r['secrets']} (скрыты при индексации, но их надо убрать из репозитория)")
+        if not r["has_tests"] and r["detected_role"] in ("SERVICE", "FRONTEND", "LIBRARY"):
+            minus(10, "Не найдено автотестов")
+        if not r["has_readme"]:
+            minus(5, "Нет README — назначение выведено из кода")
+        cid = comp_of_repo.get(r["id"])
+        if cid:
+            mine = [e for e in edges if cid in (e["source"], e["target"])]
+            low = [e for e in mine if e["confidence"] < 0.7 and not e["verified"]]
+            if low:
+                minus(min(30, 10 * len(low)), f"Связей с уверенностью ниже 0,7: {len(low)} — нужна проверка архитектора")
+            dependents = {e["source"] for e in edges if e["target"] == cid}
+            if len(dependents) >= 4:
+                minus(10, f"От него зависят {len(dependents)} компонентов — изменения рискованны")
+            outs = {e["target"] for e in edges if e["source"] == cid}
+            for other in sorted({e["source"] for e in edges if e["target"] == cid} & outs):
+                minus(15, f"Циклическая зависимость с {names.get(other, other)}")
+        score = max(0, min(100, score))
+        h = {"score": score, "level": "ok" if score >= HEALTH_OK else "warn" if score >= HEALTH_WARN else "bad", "reasons": reasons}
+        repo_h[r["id"]] = h
+        if cid:
+            comp_h[cid] = h
+    return repo_h, comp_h
+
+
+def repo_health(ctx: Context, project_id: int, user_id: int) -> dict[int, dict]:
+    if not latest_run(ctx, project_id):
+        return {}
+    return overview(ctx, project_id, user_id)["repo_health"]
 
 
 def detailed(ctx: Context, project_id: int, user_id: int, repository_id: int | None = None,

@@ -1,6 +1,7 @@
 /* PortaGraph — рендерер графа архитектуры на SVG.
-   Раскладка послойная (слева направо по направлению зависимости «A → B: A зависит от B»),
-   порядок внутри слоя — эвристика барицентров. Панорама, масштаб, выбор узла, подсветка соседей,
+   Карта системы: самый связанный компонент в центре, остальные по эллипсу в порядке, при котором
+   меньше всего пересечений; связи — ровные дуги. Граф кода: классы сгруппированы по модулям,
+   группы разложены по слоям зависимости («A → B: A зависит от B»). Панорама, масштаб, выбор узла, подсветка соседей,
    пунктир для связей с уверенностью ниже 0,7, анимация асинхронных связей. */
 "use strict";
 
@@ -19,7 +20,7 @@ const PGGraph = (() => {
   };
   const colorOf = (n) => (n.type === "SERVICE" && n.role === "FRONTEND" ? COLORS.FRONTEND : COLORS[n.type] || "#b5b5b0");
   const subtitle = (n, mode) => {
-    if (mode === "detailed") return n.stereotype ? `@${n.stereotype}` : (n.group || n.type_ru);
+    if (mode === "detailed") return n.stereotype ? `@${n.stereotype}` : n.type_ru;
     if (n.type === "SERVICE") return [n.role === "FRONTEND" ? "Фронтенд" : "Сервис", (n.stack || []).filter((s) => s !== "Docker")[0]].filter(Boolean).join(" · ");
     if (n.type === "MESSAGE_QUEUE") return `Топик${n.broker ? " · " + n.broker : ""}`;
     if (n.type === "DATABASE") return n.engine || "База данных";
@@ -149,70 +150,262 @@ const PGGraph = (() => {
     };
   }
 
+  /* ---------- общие помощники отрисовки */
+  const EDGE_CLASS = { CALLS_HTTP: "t-http", PUBLISHES: "t-event", CONSUMES: "t-event", READS_WRITES: "t-data", DEPENDS_ON: "t-dep", IMPORTS: "t-code" };
+  const markerOf = (e) => (e.verified ? "arr-ok" : "arr-" + (EDGE_CLASS[e.type] || "t-http").slice(2));
+  const HEALTH_COLOR = { ok: "#7fb069", warn: "#e0b23f", bad: "#e0604f" };
+
+  /* точка на границе прямоугольника узла в направлении (tx, ty) */
+  function clip(c, size, tx, ty) {
+    const dx = tx - c.x, dy = ty - c.y;
+    if (!dx && !dy) return { x: c.x, y: c.y };
+    const k = Math.min((size.w / 2 + 3) / Math.abs(dx || 1e-9), (size.h / 2 + 3) / Math.abs(dy || 1e-9));
+    return { x: c.x + dx * k, y: c.y + dy * k };
+  }
+
+  /* ---------- раскладка «карта»: главный узел в центре, остальные по эллипсу, связи — ровные дуги */
+  function radial(nodes, edges, size) {
+    const deg = new Map(nodes.map((n) => [n.id, 0]));
+    for (const e of edges) { if (deg.has(e.source) && deg.has(e.target)) { deg.set(e.source, deg.get(e.source) + 1); deg.set(e.target, deg.get(e.target) + 1); } }
+    const rank = (n) => deg.get(n.id) + (n.type === "SERVICE" ? 0.5 : 0);
+    const sorted = nodes.slice().sort((a, b) => rank(b) - rank(a) || a.label.localeCompare(b.label));
+    const hub = nodes.length > 3 ? sorted[0].id : null;
+    const ring = sorted.filter((n) => n.id !== hub).map((n) => n.id);
+    const adj = new Map(ring.map((i) => [i, new Map()]));
+    const chords = [];
+    for (const e of edges) {
+      if (adj.has(e.source) && adj.has(e.target) && e.source !== e.target) {
+        adj.get(e.source).set(e.target, (adj.get(e.source).get(e.target) || 0) + 1);
+        adj.get(e.target).set(e.source, (adj.get(e.target).get(e.source) || 0) + 1);
+        chords.push([e.source, e.target]);
+      }
+    }
+    // начальный порядок: жадно ставим рядом самые связанные узлы
+    const order = [];
+    const left = new Set(ring);
+    while (left.size) {
+      let best = null, bestScore = -1;
+      for (const v of left) {
+        let sc = 0;
+        order.forEach((u, i) => { const w = adj.get(v).get(u) || 0; sc += w * (1 + (i >= order.length - 2 ? 2 : 0)); });
+        if (!order.length) sc = deg.get(v);
+        if (sc > bestScore) { bestScore = sc; best = v; }
+      }
+      order.push(best); left.delete(best);
+    }
+    // улучшаем порядок перестановками: меньше пересечений дуг и короче связи
+    const n = order.length;
+    const cost = () => {
+      const pos = new Map(order.map((v, i) => [v, i]));
+      const between = (x, a, b) => { const [lo, hi] = a < b ? [a, b] : [b, a]; return x > lo && x < hi; };
+      let c = 0;
+      for (let i = 0; i < chords.length; i++) {
+        const a = pos.get(chords[i][0]), b = pos.get(chords[i][1]);
+        const d = Math.abs(a - b); c += Math.min(d, n - d);
+        for (let j = i + 1; j < chords.length; j++) {
+          const x = pos.get(chords[j][0]), y = pos.get(chords[j][1]);
+          if (x === a || x === b || y === a || y === b) continue;
+          if (between(x, a, b) !== between(y, a, b)) c += 6;
+        }
+      }
+      return c;
+    };
+    let cur = cost();
+    for (let pass = 0; pass < (n > 40 ? 3 : 25); pass++) {
+      let improved = false;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        [order[i], order[j]] = [order[j], order[i]];
+        const c = cost();
+        if (c < cur - 1e-9) { cur = c; improved = true; } else [order[i], order[j]] = [order[j], order[i]];
+      }
+      if (!improved) break;
+    }
+    const rx = Math.max(440, ((size.w + 30) * n) / (2 * Math.PI));
+    const ry = Math.max(250, ((size.h + 34) * n) / (2 * Math.PI), rx * 0.56);
+    const xy = new Map();
+    if (hub != null) xy.set(hub, { x: 0, y: 0 });
+    order.forEach((v, i) => {
+      const t = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, n);
+      xy.set(v, { x: rx * Math.cos(t), y: ry * Math.sin(t) });
+    });
+    return { xy, hub, rx, center: { x: 0, y: 0 } };
+  }
+
+  /* ---------- раскладка «граф кода»: классы сгруппированы по модулям, группы — по слоям зависимости */
+  const STEREO_ORDER = { controller: 0, restcontroller: 0, application: 1, service: 2, component: 3, configuration: 4, repository: 5 };
+  function clustered(nodes, edges, size, W, H) {
+    const groups = new Map();
+    for (const n of nodes) {
+      const g = n.group || n.repo || "—";
+      if (!groups.has(g)) groups.set(g, { id: g, label: g, ids: [], external: !!n.external });
+      groups.get(g).ids.push(n.id);
+    }
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const gOf = new Map(nodes.map((n) => [n.id, n.group || n.repo || "—"]));
+    const gEdges = [];
+    for (const e of edges) { const a = gOf.get(e.source), b = gOf.get(e.target); if (a && b && a !== b) gEdges.push({ source: a, target: b }); }
+    const layers = layout([...groups.values()], gEdges, { sinkRight: false });
+    const gap = 12, pad = 14, head = 34;
+    for (const g of groups.values()) {
+      g.ids.sort((a, b) => {
+        const A = byId.get(a), B = byId.get(b);
+        const sa = STEREO_ORDER[(A.stereotype || "").toLowerCase()] ?? (A.type === "ENTITY" ? 7 : 6);
+        const sb = STEREO_ORDER[(B.stereotype || "").toLowerCase()] ?? (B.type === "ENTITY" ? 7 : 6);
+        return sa - sb || A.label.localeCompare(B.label);
+      });
+      g.cols = g.ids.length > 8 ? 2 : 1;
+      g.rows = Math.ceil(g.ids.length / g.cols);
+      g.w = g.cols * size.w + (g.cols - 1) * gap + pad * 2;
+      g.h = head + g.rows * size.h + (g.rows - 1) * gap + pad;
+    }
+    const L = layers.map((ids) => ids.map((id) => groups.get(id)));
+    const gx = 64, gy = 26;
+    const lrW = L.reduce((s, l) => s + Math.max(...l.map((g) => g.w)), 0) + gx * (L.length - 1);
+    const lrH = Math.max(...L.map((l) => l.reduce((s, g) => s + g.h, 0) + gy * (l.length - 1)));
+    const tbW = Math.max(...L.map((l) => l.reduce((s, g) => s + g.w, 0) + gy * (l.length - 1)));
+    const tbH = L.reduce((s, l) => s + Math.max(...l.map((g) => g.h)), 0) + 90 * (L.length - 1);
+    const k = (w, h) => Math.min(W / (w + 120), H / (h + 120));
+    const dir = k(tbW, tbH) > k(lrW, lrH) * 1.05 ? "TB" : "LR";
+    let off = 0;
+    for (const l of L) {
+      if (dir === "LR") {
+        const colW = Math.max(...l.map((g) => g.w));
+        const total = l.reduce((s, g) => s + g.h, 0) + gy * (l.length - 1);
+        let y = (lrH - total) / 2;
+        for (const g of l) { g.x = off + (colW - g.w) / 2; g.y = y; y += g.h + gy; }
+        off += colW + gx;
+      } else {
+        const rowH = Math.max(...l.map((g) => g.h));
+        const total = l.reduce((s, g) => s + g.w, 0) + gy * (l.length - 1);
+        let x = (tbW - total) / 2;
+        for (const g of l) { g.x = x; g.y = off + (rowH - g.h) / 2; x += g.w + gy; }
+        off += rowH + 90;
+      }
+    }
+    const xy = new Map();
+    for (const g of groups.values()) {
+      g.ids.forEach((id, i) => {
+        const c = i % g.cols, r = Math.floor(i / g.cols);
+        xy.set(id, { x: g.x + pad + c * (size.w + gap) + size.w / 2, y: g.y + head + r * (size.h + gap) + size.h / 2 });
+      });
+    }
+    return { xy, groups: [...groups.values()], gOf, dir };
+  }
+
   /* ---------- отрисовка */
   function draw(svg, data, opt) {
     svg.innerHTML = "";
     const mode = opt.mode;
-    const size = mode === "detailed" ? { w: 184, h: 44, gx: 70, gy: 16 } : { w: 178, h: 52, gx: 76, gy: 24 };
-    const layers = layout(data.nodes, data.edges, { sinkRight: mode !== "detailed" });
-    const { xy, dir } = place(layers, size, svg.clientWidth || 1000, svg.clientHeight || 700);
+    const size = mode === "detailed" ? { w: 178, h: 44 } : { w: 200, h: 54 };
+    const W = svg.clientWidth || 1000, H = svg.clientHeight || 700;
+    const lay = mode === "detailed" ? clustered(data.nodes, data.edges, size, W, H) : radial(data.nodes, data.edges, size);
+    const { xy } = lay;
     const defs = el("defs", {}, svg);
-    for (const [id, c] of [["arr", "#6a6a63"], ["arr-hl", "#e0913f"], ["arr-async", "#8f7cd6"], ["arr-ok", "#7fb069"]]) {
+    for (const [id, c] of [["arr-http", "#8a8a83"], ["arr-event", "#9d8cec"], ["arr-data", "#7fb069"], ["arr-dep", "#6fa8dc"], ["arr-code", "#6a6a63"], ["arr-hl", "#e0913f"], ["arr-ok", "#7fb069"]]) {
       const m = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" }, defs);
       el("path", { d: "M0,0 L10,5 L0,10 z", fill: c }, m);
     }
     const root = el("g", {}, svg);
-    const gEdges = el("g", {}, root), gLabels = el("g", {}, root), gNodes = el("g", {}, root);
+    const gGroups = el("g", {}, root), gEdges = el("g", {}, root), gLabels = el("g", {}, root), gNodes = el("g", {}, root);
+
+    // контейнеры модулей
+    if (lay.groups) {
+      for (const g of lay.groups) {
+        const box = el("g", { class: "g-group" + (g.external ? " ext" : "") }, gGroups);
+        el("rect", { x: g.x, y: g.y, width: g.w, height: g.h, rx: 14 }, box);
+        const [repo, mod] = g.label.includes(" / ") ? g.label.split(" / ") : [g.label, ""];
+        const t = el("text", { x: g.x + 14, y: g.y + 22 }, box);
+        const a = el("tspan", { class: "repo" }, t); a.textContent = repo;
+        if (mod) { const b = el("tspan", { class: "mod", dx: 6 }, t); b.textContent = "/ " + mod; }
+        const c = el("text", { class: "cnt", x: g.x + g.w - 14, y: g.y + 22, "text-anchor": "end" }, box);
+        c.textContent = `${g.ids.length}`;
+      }
+    }
+
+    // пары с несколькими связями разводим в стороны
+    const pairCount = new Map();
+    const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+    for (const e of data.edges) pairCount.set(pairKey(e.source, e.target), (pairCount.get(pairKey(e.source, e.target)) || 0) + 1);
+    const pairSeen = new Map();
+
     const nodeEls = new Map(), edgeEls = [];
     for (const e of data.edges) {
       const a = xy.get(e.source), b = xy.get(e.target);
       if (!a || !b) continue;
+      const key = pairKey(e.source, e.target);
+      const idx = pairSeen.get(key) || 0; pairSeen.set(key, idx + 1);
+      const spread = (idx - ((pairCount.get(key) || 1) - 1) / 2) * 22 * (e.source < e.target ? 1 : -1);
       let d;
-      if (dir === "LR") {
-        const sx = a.x + size.w, sy = a.y + size.h / 2, tx = b.x, ty = b.y + size.h / 2;
-        if (tx > sx + 10) {
-          const dx = Math.max(40, (tx - sx) / 2);
-          d = `M${sx},${sy} C${sx + dx},${sy} ${tx - dx},${ty} ${tx},${ty}`;
-        } else { // обратная или внутрислойная связь — дугой снизу
-          const low = Math.max(a.y, b.y) + size.h + 40;
-          d = `M${a.x + size.w / 2},${a.y + size.h} C${a.x + size.w / 2},${low} ${b.x + size.w / 2},${low} ${b.x + size.w / 2},${b.y + size.h}`;
-        }
+      if (mode !== "detailed") {
+        const ringEdge = e.source !== lay.hub && e.target !== lay.hub;
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len;
+        let cx = mx, cy = my;
+        if (ringEdge) { const f = 1 - 0.55 * Math.min(1, len / (2 * lay.rx)); cx = lay.center.x + (mx - lay.center.x) * f; cy = lay.center.y + (my - lay.center.y) * f; }
+        cx += nx * spread; cy += ny * spread;
+        const s = clip(a, size, cx, cy), t = clip(b, size, cx, cy);
+        d = `M${s.x},${s.y} Q${cx},${cy} ${t.x},${t.y}`;
       } else {
-        const sx = a.x + size.w / 2, sy = a.y + size.h, tx = b.x + size.w / 2, ty = b.y;
-        if (ty > sy + 10) {
-          const dy = Math.max(30, (ty - sy) / 2);
-          d = `M${sx},${sy} C${sx},${sy + dy} ${tx},${ty - dy} ${tx},${ty}`;
-        } else { // обратная связь — дугой справа
-          const right = Math.max(a.x, b.x) + size.w + 50;
-          d = `M${a.x + size.w},${a.y + size.h / 2} C${right},${a.y + size.h / 2} ${right},${b.y + size.h / 2} ${b.x + size.w},${b.y + size.h / 2}`;
+        const sameGroup = lay.gOf.get(e.source) === lay.gOf.get(e.target);
+        if (sameGroup) {
+          const side = a.x === b.x ? size.w / 2 : 0;
+          const sx = a.x + side, tx = b.x + side, out = Math.max(sx, tx) + 26 + Math.abs(a.y - b.y) * 0.12;
+          d = side ? `M${sx},${a.y} C${out},${a.y} ${out},${b.y} ${tx},${b.y}` : `M${a.x},${a.y + size.h / 2} C${a.x},${a.y + 40} ${b.x},${b.y - 40} ${b.x},${b.y - size.h / 2}`;
+        } else if (lay.dir === "LR") {
+          const fwd = b.x > a.x;
+          const sx = a.x + (fwd ? size.w / 2 : -size.w / 2), tx = b.x + (fwd ? -size.w / 2 : size.w / 2);
+          const dx = Math.max(50, Math.abs(tx - sx) / 2) * (fwd ? 1 : -1);
+          d = `M${sx},${a.y + spread / 3} C${sx + dx},${a.y} ${tx - dx},${b.y} ${tx},${b.y + spread / 3}`;
+        } else {
+          const fwd = b.y > a.y;
+          const sy = a.y + (fwd ? size.h / 2 : -size.h / 2), ty = b.y + (fwd ? -size.h / 2 : size.h / 2);
+          const dy = Math.max(40, Math.abs(ty - sy) / 2) * (fwd ? 1 : -1);
+          d = `M${a.x + spread / 3},${sy} C${a.x},${sy + dy} ${b.x},${ty - dy} ${b.x + spread / 3},${ty}`;
         }
       }
-      const cls = ["g-edge"];
+      const cls = ["g-edge", EDGE_CLASS[e.type] || "t-http"];
       if (ASYNC.has(e.type)) cls.push("async");
-      if (e.type === "IMPORTS") cls.push("code");
       if (e.verified) cls.push("verified");
       else if (e.confidence < 0.7) cls.push("low");
-      const p = el("path", { d, class: cls.join(" "), "marker-end": `url(#${ASYNC.has(e.type) ? "arr-async" : e.verified ? "arr-ok" : "arr"})` }, gEdges);
-      const t = el("title", {}, p);
-      t.textContent = `${EDGE_RU[e.type] || e.type}${e.label ? " · " + e.label : ""} · уверенность ${Number(e.confidence).toFixed(2)}${e.verified ? " · подтверждено" : ""}`;
+      const p = el("path", { d, class: cls.join(" "), "marker-end": `url(#${markerOf(e)})` }, gEdges);
+      el("title", {}, p).textContent = `${EDGE_RU[e.type] || e.type}${e.label ? " · " + e.label : ""} · уверенность ${Number(e.confidence).toFixed(2)}${e.verified ? " · подтверждено" : ""}`;
       edgeEls.push({ e, p });
     }
+    const usedBy = new Map();
+    for (const e of data.edges) usedBy.set(e.target, (usedBy.get(e.target) || 0) + 1);
     for (const n of data.nodes) {
-      const { x, y } = xy.get(n.id);
-      const g = el("g", { class: "g-node" + (n.external ? " ext" : ""), transform: `translate(${x},${y})`, tabindex: 0 }, gNodes);
+      const c = xy.get(n.id);
+      const x = c.x - size.w / 2, y = c.y - size.h / 2;
+      const g = el("g", { class: "g-node" + (n.external ? " ext" : "") + (n.id === lay.hub ? " hub" : ""), transform: `translate(${x},${y})`, tabindex: 0 }, gNodes);
       el("rect", { class: "bg", width: size.w, height: size.h, rx: 10 }, g);
       el("rect", { class: "chip", x: 12, y: size.h / 2 - 7, width: 14, height: 14, rx: n.type === "DATABASE" ? 7 : n.type === "MESSAGE_QUEUE" ? 2 : 4, fill: colorOf(n) }, g);
-      const tt = el("text", { class: "t", x: 36, y: size.h / 2 - (mode === "detailed" ? 2 : 3) }, g);
-      tt.textContent = trim(n.label, mode === "detailed" ? 22 : 21);
+      // цифра справа: здоровье репозитория (0–100) или число связей
+      let badge = null, bColor = null, bTitle = "";
+      if (n.health) { badge = n.health.score; bColor = HEALTH_COLOR[n.health.level]; bTitle = `Здоровье ${n.health.score} из 100` + (n.health.reasons.length ? ":\n" + n.health.reasons.map((r) => `${r.points}  ${r.text}`).join("\n") : ": проблем не найдено"); }
+      else if (mode !== "detailed" && n.links) { badge = n.links; bTitle = `Связан с ${n.links} компонентами`; }
+      else if (mode === "detailed" && usedBy.get(n.id)) { badge = usedBy.get(n.id); bTitle = `Используется в ${badge} классах`; }
+      const textMax = badge != null ? (mode === "detailed" ? 15 : 16) : (mode === "detailed" ? 20 : 22);
+      const tt = el("text", { class: "t", x: 36, y: size.h / 2 - 3 }, g);
+      tt.textContent = trim(n.label, textMax);
       const st = el("text", { class: "s", x: 36, y: size.h / 2 + 13 }, g);
-      st.textContent = trim(subtitle(n, mode) || "", 28);
-      if (n.verified) { const v = el("circle", { cx: size.w - 14, cy: 14, r: 4, fill: "#7fb069" }, g); el("title", {}, v).textContent = "Подтверждено архитектором"; }
-      else if (n.confidence != null && n.confidence < 0.7) { const v = el("circle", { cx: size.w - 14, cy: 14, r: 4, fill: "#e0b23f" }, g); el("title", {}, v).textContent = `Уверенность ${Number(n.confidence).toFixed(2)}`; }
+      st.textContent = trim(subtitle(n, mode) || "", textMax + 6);
+      if (badge != null) {
+        const bw = String(badge).length > 2 ? 36 : 30;
+        const bg = el("g", { class: "badge" + (bColor ? " health" : "") }, g);
+        el("rect", { x: size.w - bw - 10, y: size.h / 2 - 11, width: bw, height: 22, rx: 11, fill: bColor ? bColor + "22" : "#2c2c29", stroke: bColor || "#3d3d39" }, bg);
+        const bt = el("text", { x: size.w - 10 - bw / 2, y: size.h / 2 + 4, "text-anchor": "middle", fill: bColor || "#b5b5b0" }, bg);
+        bt.textContent = badge;
+        el("title", {}, bg).textContent = bTitle;
+      }
+      if (n.verified) { const v = el("circle", { cx: 6, cy: 6, r: 4, fill: "#7fb069" }, g); el("title", {}, v).textContent = "Подтверждено архитектором"; }
       el("title", {}, g).textContent = `${n.label}\n${n.type_ru}${n.description ? "\n" + n.description : ""}`;
       nodeEls.set(n.id, g);
     }
     let bx = Infinity, by = Infinity, bx2 = -Infinity, by2 = -Infinity;
-    for (const { x, y } of xy.values()) { bx = Math.min(bx, x); by = Math.min(by, y); bx2 = Math.max(bx2, x + size.w); by2 = Math.max(by2, y + size.h + 40); }
+    for (const c of xy.values()) { bx = Math.min(bx, c.x - size.w / 2); by = Math.min(by, c.y - size.h / 2); bx2 = Math.max(bx2, c.x + size.w / 2); by2 = Math.max(by2, c.y + size.h / 2); }
+    for (const g of lay.groups || []) { bx = Math.min(bx, g.x); by = Math.min(by, g.y); bx2 = Math.max(bx2, g.x + g.w + 40); by2 = Math.max(by2, g.y + g.h); }
+    for (const it of edgeEls) { try { const L = it.p.getTotalLength(); it.mid = it.p.getPointAtLength(L / 2); } catch (_) { it.mid = null; } }
     return { nodeEls, edgeEls, xy, size, box: { x: bx, y: by, w: bx2 - bx, h: by2 - by }, gLabels };
   }
 
@@ -224,7 +417,7 @@ const PGGraph = (() => {
       if (on) { near.add(e.source); near.add(e.target); }
       p.classList.toggle("hl", on);
       p.classList.toggle("dim", id != null && !on);
-      p.setAttribute("marker-end", `url(#${on ? "arr-hl" : ASYNC.has(e.type) ? "arr-async" : e.verified ? "arr-ok" : "arr"})`);
+      p.setAttribute("marker-end", `url(#${on ? "arr-hl" : markerOf(e)})`);
     }
     r.gLabels.innerHTML = "";
     for (const [nid, g] of r.nodeEls) {
@@ -232,10 +425,9 @@ const PGGraph = (() => {
       g.classList.toggle("dim", id != null && !near.has(nid));
     }
     if (id == null) return;
-    for (const { e } of r.edgeEls) {
-      if (e.source !== id && e.target !== id) continue;
-      const a = r.xy.get(e.source), b = r.xy.get(e.target);
-      const t = el("text", { class: "g-label", x: (a.x + b.x) / 2 + r.size.w / 2, y: (a.y + b.y) / 2 + r.size.h / 2 - 6, "text-anchor": "middle" }, r.gLabels);
+    for (const { e, mid } of r.edgeEls) {
+      if ((e.source !== id && e.target !== id) || !mid) continue;
+      const t = el("text", { class: "g-label", x: mid.x, y: mid.y - 6, "text-anchor": "middle" }, r.gLabels);
       t.textContent = `${EDGE_RU[e.type] || e.type} · ${Number(e.confidence).toFixed(2)}`;
     }
   }
@@ -278,6 +470,8 @@ const PGGraph = (() => {
       g.addEventListener("click", (ev) => { ev.stopPropagation(); select(id); });
       g.addEventListener("dblclick", (ev) => { ev.stopPropagation(); open(id); });
       g.addEventListener("keydown", (ev) => { if (ev.key === "Enter") select(id); });
+      g.addEventListener("mouseenter", () => { if (selected == null) PGGraph.highlight(rendered, id); });
+      g.addEventListener("mouseleave", () => { if (selected == null) PGGraph.highlight(rendered, null); });
     });
     if (!keepView) vp.fit(rendered.box);
     if (selected && rendered.nodeEls.has(selected)) PGGraph.highlight(rendered, selected);
@@ -321,7 +515,7 @@ const PGGraph = (() => {
   async function select(id, center, panelOnly) {
     selected = id;
     if (!panelOnly) PGGraph.highlight(rendered, id);
-    if (center && rendered.xy.get(id)) { const p = rendered.xy.get(id); vp.center(p.x + rendered.size.w / 2, p.y + rendered.size.h / 2); }
+    if (center && rendered.xy.get(id)) { const p = rendered.xy.get(id); vp.center(p.x, p.y); }
     try {
       const d = await PG.api(`/api/projects/${pid}/nodes/${id}`);
       if (selected !== id) return;
@@ -375,6 +569,7 @@ const PGGraph = (() => {
         </div>
       </div>
       <div class="panel-body">
+        ${healthBlock(d)}
         <div><h4>Назначение</h4><p class="${d.description ? "" : "faint"}" style="line-height:1.6">${PG.esc(d.description || "Описание не определено")}</p></div>
         ${m.stack && m.stack.length ? `<div><h4>Стек</h4><div class="row wrap">${m.stack.map((s) => `<span class="tag">${PG.esc(s)}</span>`).join("")}</div></div>` : ""}
         ${m.reasons && m.reasons.length ? `<div><h4>Почему такая роль</h4><ul class="muted small" style="margin:0;padding-left:18px">${m.reasons.slice(0, 5).map((r) => `<li>${PG.esc(r)}</li>`).join("")}</ul></div>` : ""}
@@ -385,6 +580,13 @@ const PGGraph = (() => {
         ${d.children && d.children.length && mode === "overview" ? `<div><h4>Содержит · ${d.children.length}</h4><div class="side-list">${d.children.slice(0, 40).map((c) => `<a href="${base}/graph?focus=${c.id}">${PG.esc(c.name)}<span class="faint small" style="margin-left:auto">${PG.esc(c.type)}</span></a>`).join("")}</div></div>` : ""}
         <div class="faint small mono" style="overflow-wrap:anywhere">${PG.esc(d.qualified_name)}</div>
       </div>`;
+  }
+  function healthBlock(d) {
+    const h = (data.nodes.find((n) => n.id === d.id) || {}).health;
+    if (!h) return "";
+    const verdict = { ok: "в норме", warn: "требует внимания", bad: "плохое состояние" }[h.level];
+    return `<div><h4>Здоровье репозитория</h4><div class="row" style="margin-bottom:8px"><span class="health ${h.level}">${h.score}</span><span class="muted small">из 100 — ${verdict}</span></div>
+      <div class="reasons">${h.reasons.map((r) => `<div><b>${r.points}</b><span class="muted">${PG.esc(r.text)}</span></div>`).join("") || '<span class="faint">Проблем не найдено</span>'}</div></div>`;
   }
   const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; };
   const repoIdOf = (d) => (data.nodes.find((n) => n.id === d.id) || {}).repo_id || "";

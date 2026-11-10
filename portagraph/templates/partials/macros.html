@@ -45,3 +45,8 @@
 {% macro empty(icon, title, text) -%}
 <div class="empty"><div class="ico">{{ ico(icon) }}</div><h3>{{ title }}</h3><p>{{ text }}</p>{{ caller() if caller }}</div>
 {%- endmacro %}
+
+{% macro health_badge(h) -%}
+{%- if h -%}<span class="health {{ h.level }}" title="Здоровье {{ h.score }} из 100{% for r in h.reasons %}&#10;{{ r.points }} {{ r.text }}{% endfor %}">{{ h.score }}</span>
+{%- else -%}<span class="faint">—</span>{%- endif -%}
+{%- endmacro %}

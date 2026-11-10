@@ -135,7 +135,8 @@ def overview(pid):
     reports = impact_service.history(c, pid, g.user["id"])[:4]
     docs = docs_service.list_docs(c, pid, g.user["id"])[:4]
     members = projects.members(c, pid, g.user["id"])
-    return render_template("workspace/overview.html", p=p, run=run, last=last, history=history, repos=repo_rows, counts=counts,
+    health = graph_service.repo_health(c, pid, g.user["id"])
+    return render_template("workspace/overview.html", p=p, run=run, last=last, history=history, repos=repo_rows, counts=counts, health=health,
                            weak=weak, hubs=hubs, reports=reports, docs=docs, members=members, nav="overview")
 
 
@@ -147,7 +148,8 @@ def repositories(pid):
     rows = repos.list_repos(ctx(), pid, g.user["id"])
     last = ctx().db.one("SELECT * FROM analysis_runs WHERE project_id = %s ORDER BY id DESC LIMIT 1", pid)
     results = session.pop("git_results", None)
-    return render_template("workspace/repositories.html", p=p, repos=rows, last=last, results=results,
+    health = graph_service.repo_health(ctx(), pid, g.user["id"])
+    return render_template("workspace/repositories.html", p=p, repos=rows, last=last, results=results, health=health,
                            new=request.args.get("new"), allow_local=ctx().settings.allow_local_paths,
                            max_mb=ctx().settings.max_upload_mb, nav="repositories")
 
